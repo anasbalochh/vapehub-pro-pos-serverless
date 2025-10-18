@@ -24,25 +24,28 @@ A modern, serverless Point of Sale (POS) system built with React, TypeScript, an
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 - Supabase account
 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/anasbalochh/vapehub-pro-pos-serverless.git
 cd vapehub-pro-pos-serverless
 ```
 
 2. Install dependencies:
+
 ```bash
 cd frontend
 npm install
 ```
 
 3. Set up environment variables:
+
 ```bash
 cp .env.example .env.local
 ```
@@ -50,6 +53,7 @@ cp .env.example .env.local
 4. Configure your Supabase credentials in `.env.local`
 
 5. Run the development server:
+
 ```bash
 npm run dev
 ```

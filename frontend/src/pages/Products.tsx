@@ -103,11 +103,11 @@ const Products = () => {
 
     setIsSubmitting(true);
     try {
-            if (editingProduct) {
+      if (editingProduct) {
         // Update existing product
         await dynamicProductsApi.update(editingProduct.id, formData);
         toast.success('Product updated successfully');
-            } else {
+      } else {
         // Create new product
         await dynamicProductsApi.create(user.id, formData);
         toast.success('Product created successfully');
@@ -118,10 +118,30 @@ const Products = () => {
       setIsFormOpen(false);
       setEditingProduct(null);
 
-        } catch (error: any) {
-            console.error('Failed to save product:', error);
-      toast.error('Failed to save product');
-        } finally {
+    } catch (error: any) {
+      console.error('Failed to save product:', error);
+      
+      // Show specific error messages based on error type
+      let errorMessage = 'Failed to save product';
+      
+      if (error.message) {
+        if (error.message.includes('permission')) {
+          errorMessage = 'Permission denied. Please check your database access.';
+        } else if (error.message.includes('duplicate')) {
+          errorMessage = 'A product with this information already exists.';
+        } else if (error.message.includes('validation')) {
+          errorMessage = 'Please check your input data and try again.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your internet connection.';
+        } else if (error.message.includes('invalid input syntax')) {
+          errorMessage = 'Invalid data format. Please check your field values.';
+        } else {
+          errorMessage = `Error: ${error.message}`;
+        }
+      }
+      
+      toast.error(errorMessage);
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -347,6 +367,21 @@ const Products = () => {
                               return value ? 'Yes' : 'No';
                             } else if (Array.isArray(value)) {
                               return value.join(', ');
+                            } else if (field.fieldType === 'date' && value) {
+                              // Format date fields properly
+                              try {
+                                const date = new Date(value);
+                                if (!isNaN(date.getTime())) {
+                                  return date.toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit'
+                                  });
+                                }
+                              } catch (e) {
+                                // If date parsing fails, return original value
+                              }
+                              return value;
                             } else {
                               return value || '-';
                             }

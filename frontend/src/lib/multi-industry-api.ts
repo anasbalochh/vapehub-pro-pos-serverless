@@ -19,7 +19,26 @@ export const industriesApi = {
       .eq('is_active', true)
       .order('display_name');
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error details:', error);
+      
+      // Provide specific error messages
+      if (error.code === '23505') {
+        throw new Error('A product with this information already exists');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid reference data. Please check your field values');
+      } else if (error.code === '22P02') {
+        throw new Error('Invalid data format. Please check your field values');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied. Please check your database access');
+      } else if (error.code === 'PGRST116') {
+        throw new Error('Database table does not exist. Please run the setup script');
+      } else if (error.message?.includes('invalid input syntax')) {
+        throw new Error('Invalid data format. Please check your field values');
+      } else {
+        throw new Error(error.message || 'Failed to create product');
+      }
+    }
     return { data: data || [] };
   },
 
@@ -31,7 +50,26 @@ export const industriesApi = {
       .eq('id', id)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error details:', error);
+      
+      // Provide specific error messages
+      if (error.code === '23505') {
+        throw new Error('A product with this information already exists');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid reference data. Please check your field values');
+      } else if (error.code === '22P02') {
+        throw new Error('Invalid data format. Please check your field values');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied. Please check your database access');
+      } else if (error.code === 'PGRST116') {
+        throw new Error('Database table does not exist. Please run the setup script');
+      } else if (error.message?.includes('invalid input syntax')) {
+        throw new Error('Invalid data format. Please check your field values');
+      } else {
+        throw new Error(error.message || 'Failed to create product');
+      }
+    }
     return { data };
   }
 };
@@ -68,7 +106,26 @@ export const userIndustryApi = {
       `)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error details:', error);
+      
+      // Provide specific error messages
+      if (error.code === '23505') {
+        throw new Error('A product with this information already exists');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid reference data. Please check your field values');
+      } else if (error.code === '22P02') {
+        throw new Error('Invalid data format. Please check your field values');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied. Please check your database access');
+      } else if (error.code === 'PGRST116') {
+        throw new Error('Database table does not exist. Please run the setup script');
+      } else if (error.message?.includes('invalid input syntax')) {
+        throw new Error('Invalid data format. Please check your field values');
+      } else {
+        throw new Error(error.message || 'Failed to create product');
+      }
+    }
     return { data };
   },
 
@@ -87,7 +144,26 @@ export const userIndustryApi = {
       `)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error details:', error);
+      
+      // Provide specific error messages
+      if (error.code === '23505') {
+        throw new Error('A product with this information already exists');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid reference data. Please check your field values');
+      } else if (error.code === '22P02') {
+        throw new Error('Invalid data format. Please check your field values');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied. Please check your database access');
+      } else if (error.code === 'PGRST116') {
+        throw new Error('Database table does not exist. Please run the setup script');
+      } else if (error.message?.includes('invalid input syntax')) {
+        throw new Error('Invalid data format. Please check your field values');
+      } else {
+        throw new Error(error.message || 'Failed to create product');
+      }
+    }
     return { data };
   }
 };
@@ -173,7 +249,26 @@ export const fieldConfigApi = {
       .select('*')
       .order('display_order');
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error details:', error);
+      
+      // Provide specific error messages
+      if (error.code === '23505') {
+        throw new Error('A product with this information already exists');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid reference data. Please check your field values');
+      } else if (error.code === '22P02') {
+        throw new Error('Invalid data format. Please check your field values');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied. Please check your database access');
+      } else if (error.code === 'PGRST116') {
+        throw new Error('Database table does not exist. Please run the setup script');
+      } else if (error.message?.includes('invalid input syntax')) {
+        throw new Error('Invalid data format. Please check your field values');
+      } else {
+        throw new Error(error.message || 'Failed to create product');
+      }
+    }
     return { data: data || [] };
   },
 
@@ -382,7 +477,26 @@ export const fieldConfigApi = {
       .eq('field_key', fieldKey)
       .eq('is_custom', true);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error details:', error);
+      
+      // Provide specific error messages
+      if (error.code === '23505') {
+        throw new Error('A product with this information already exists');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid reference data. Please check your field values');
+      } else if (error.code === '22P02') {
+        throw new Error('Invalid data format. Please check your field values');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied. Please check your database access');
+      } else if (error.code === 'PGRST116') {
+        throw new Error('Database table does not exist. Please run the setup script');
+      } else if (error.message?.includes('invalid input syntax')) {
+        throw new Error('Invalid data format. Please check your field values');
+      } else {
+        throw new Error(error.message || 'Failed to create product');
+      }
+    }
   },
 
   // Reorder fields
@@ -398,7 +512,26 @@ export const fieldConfigApi = {
       .from('product_field_configs')
       .upsert(updates, { onConflict: 'user_id,field_key' });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error details:', error);
+      
+      // Provide specific error messages
+      if (error.code === '23505') {
+        throw new Error('A product with this information already exists');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid reference data. Please check your field values');
+      } else if (error.code === '22P02') {
+        throw new Error('Invalid data format. Please check your field values');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied. Please check your database access');
+      } else if (error.code === 'PGRST116') {
+        throw new Error('Database table does not exist. Please run the setup script');
+      } else if (error.message?.includes('invalid input syntax')) {
+        throw new Error('Invalid data format. Please check your field values');
+      } else {
+        throw new Error(error.message || 'Failed to create product');
+      }
+    }
   }
 };
 
@@ -417,7 +550,26 @@ export const dynamicProductsApi = {
 
     const { data, error } = await query.order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error details:', error);
+      
+      // Provide specific error messages
+      if (error.code === '23505') {
+        throw new Error('A product with this information already exists');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid reference data. Please check your field values');
+      } else if (error.code === '22P02') {
+        throw new Error('Invalid data format. Please check your field values');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied. Please check your database access');
+      } else if (error.code === 'PGRST116') {
+        throw new Error('Database table does not exist. Please run the setup script');
+      } else if (error.message?.includes('invalid input syntax')) {
+        throw new Error('Invalid data format. Please check your field values');
+      } else {
+        throw new Error(error.message || 'Failed to create product');
+      }
+    }
 
     // Transform the data to include customData
     const transformedData = (data || []).map(product => ({
@@ -461,7 +613,26 @@ export const dynamicProductsApi = {
       .select('*')
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error details:', error);
+      
+      // Provide specific error messages
+      if (error.code === '23505') {
+        throw new Error('A product with this information already exists');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid reference data. Please check your field values');
+      } else if (error.code === '22P02') {
+        throw new Error('Invalid data format. Please check your field values');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied. Please check your database access');
+      } else if (error.code === 'PGRST116') {
+        throw new Error('Database table does not exist. Please run the setup script');
+      } else if (error.message?.includes('invalid input syntax')) {
+        throw new Error('Invalid data format. Please check your field values');
+      } else {
+        throw new Error(error.message || 'Failed to create product');
+      }
+    }
 
     // Transform the returned data to include customData
     const transformedData = {
@@ -505,7 +676,26 @@ export const dynamicProductsApi = {
       .select('*')
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error details:', error);
+      
+      // Provide specific error messages
+      if (error.code === '23505') {
+        throw new Error('A product with this information already exists');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid reference data. Please check your field values');
+      } else if (error.code === '22P02') {
+        throw new Error('Invalid data format. Please check your field values');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied. Please check your database access');
+      } else if (error.code === 'PGRST116') {
+        throw new Error('Database table does not exist. Please run the setup script');
+      } else if (error.message?.includes('invalid input syntax')) {
+        throw new Error('Invalid data format. Please check your field values');
+      } else {
+        throw new Error(error.message || 'Failed to create product');
+      }
+    }
 
     // Transform the returned data to include customData
     const transformedData = {
@@ -523,6 +713,25 @@ export const dynamicProductsApi = {
       .delete()
       .eq('id', productId);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error details:', error);
+      
+      // Provide specific error messages
+      if (error.code === '23505') {
+        throw new Error('A product with this information already exists');
+      } else if (error.code === '23503') {
+        throw new Error('Invalid reference data. Please check your field values');
+      } else if (error.code === '22P02') {
+        throw new Error('Invalid data format. Please check your field values');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied. Please check your database access');
+      } else if (error.code === 'PGRST116') {
+        throw new Error('Database table does not exist. Please run the setup script');
+      } else if (error.message?.includes('invalid input syntax')) {
+        throw new Error('Invalid data format. Please check your field values');
+      } else {
+        throw new Error(error.message || 'Failed to create product');
+      }
+    }
   }
 };
