@@ -1,95 +1,68 @@
-# VapeHub Pro POS - Serverless
+# VapeHub Pro POS System
 
 A modern, serverless Point of Sale (POS) system built with React, TypeScript, and Supabase.
 
-## Features
+## 🚀 Vercel Deployment
 
-- 🛒 **Multi-Industry Support** - Customizable for any business type
-- 📱 **Responsive Design** - Works on desktop, tablet, and mobile
-- 🔐 **Secure Authentication** - Built-in user management
-- 📊 **Analytics Dashboard** - Real-time sales insights
-- 🖨️ **Receipt Printing** - WebUSB printer support
-- 📦 **Inventory Management** - Stock tracking and alerts
-- 💰 **Sales Management** - Complete POS functionality
+This project is configured for automatic deployment to Vercel at: **vapehub-pro-pos.vercel.app**
 
-## Tech Stack
+### Quick Deploy to Vercel:
 
-- **Frontend**: React 18, TypeScript, Vite
-- **UI Components**: Shadcn/ui, Tailwind CSS
-- **Backend**: Supabase (PostgreSQL, Auth, Storage)
-- **State Management**: React Query, Context API
-- **Deployment**: Vercel
+1. **Connect to Vercel:**
+   ```bash
+   npm i -g vercel
+   vercel login
+   vercel
+   ```
 
-## Getting Started
+2. **Automatic Deployment:**
+   - Push to `main` branch triggers automatic deployment
+   - Vercel will build and deploy your app automatically
+   - Your app will be available at `vapehub-pro-pos.vercel.app`
 
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- Supabase account
-
-### Installation
-
-1. Clone the repository:
+### Manual Deployment:
 
 ```bash
-git clone https://github.com/anasbalochh/vapehub-pro-pos-serverless.git
-cd vapehub-pro-pos-serverless
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy from project root
+vercel
+
+# Or deploy with production build
+vercel --prod
 ```
 
-2. Install dependencies:
+### Local Development:
 
 ```bash
-cd frontend
-npm install
-```
+# Install dependencies
+npm run install-deps
 
-3. Set up environment variables:
-
-```bash
-cp .env.example .env.local
-```
-
-4. Configure your Supabase credentials in `.env.local`
-
-5. Run the development server:
-
-```bash
+# Start development server
 npm run dev
+
+# Build for production
+npm run build
 ```
 
-## Project Structure
+### Features:
 
-```
-├── frontend/                 # React frontend application
-│   ├── src/
-│   │   ├── components/       # Reusable UI components
-│   │   ├── pages/           # Application pages
-│   │   ├── lib/             # Utilities and API clients
-│   │   ├── types/           # TypeScript type definitions
-│   │   └── contexts/        # React contexts
-│   ├── public/              # Static assets
-│   └── package.json         # Frontend dependencies
-├── README.md                # This file
-└── package.json             # Root package configuration
-```
+- ✅ Multi-industry support
+- ✅ Dynamic field configuration
+- ✅ Real-time inventory management
+- ✅ Customizable product fields
+- ✅ Modern React + TypeScript
+- ✅ Supabase backend
+- ✅ Responsive design
 
-## Branches
+### Tech Stack:
 
-- `master` - Main branch with original code
-- `feature/dynamic-field-system` - Enhanced dynamic field system
+- **Frontend:** React 18, TypeScript, Vite
+- **Backend:** Supabase (PostgreSQL, Auth, Real-time)
+- **UI:** Radix UI, Tailwind CSS
+- **Deployment:** Vercel
 
-## Contributing
+---
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License.
-
-## Support
-
-For support and questions, please open an issue on GitHub.
+**Live Demo:** [vapehub-pro-pos.vercel.app](https://vapehub-pro-pos.vercel.app)
