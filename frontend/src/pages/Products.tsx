@@ -120,10 +120,10 @@ const Products = () => {
 
     } catch (error: any) {
       console.error('Failed to save product:', error);
-      
+
       // Show specific error messages based on error type
       let errorMessage = 'Failed to save product';
-      
+
       if (error.message) {
         if (error.message.includes('permission')) {
           errorMessage = 'Permission denied. Please check your database access.';
@@ -139,7 +139,7 @@ const Products = () => {
           errorMessage = `Error: ${error.message}`;
         }
       }
-      
+
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -368,9 +368,18 @@ const Products = () => {
                             } else if (Array.isArray(value)) {
                               return value.join(', ');
                             } else if (field.fieldType === 'date' && value) {
-                              // Format date fields properly
+                              // Format date fields properly - handle both MM/DD/YYYY and ISO formats
                               try {
-                                const date = new Date(value);
+                                let date;
+                                if (value.includes('/')) {
+                                  // Handle MM/DD/YYYY format
+                                  const [month, day, year] = value.split('/');
+                                  date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                } else {
+                                  // Handle ISO format
+                                  date = new Date(value);
+                                }
+                                
                                 if (!isNaN(date.getTime())) {
                                   return date.toLocaleDateString('en-US', {
                                     year: 'numeric',
