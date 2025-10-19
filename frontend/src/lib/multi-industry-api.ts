@@ -5,7 +5,7 @@ const handleDatabaseError = (error: any, operation: string) => {
   console.error(`Error message: ${error.message}`);
   console.error(`Error details: ${error.details}`);
   console.error(`Error hint: ${error.hint}`);
-  
+
   // Provide specific error messages based on actual error codes
   if (error.code === '23505') {
     // Only show duplicate error for actual unique constraint violations
