@@ -268,9 +268,25 @@ export const fieldConfigApi = {
   },
 
 
-  // Add custom field - COMPLETELY DYNAMIC
+  // Add custom field - COMPLETELY DYNAMIC with conflict prevention
   async addCustomField(userId: string, field: Omit<ProductFieldConfig, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<{ data: ProductFieldConfig }> {
     try {
+      // Validate field key format
+      if (!field.fieldKey || !/^[a-zA-Z0-9_]+$/.test(field.fieldKey)) {
+        throw new Error('Field key must contain only letters, numbers, and underscores');
+      }
+
+      // Check if field already exists (case-insensitive)
+      const { data: existingFields } = await supabase
+        .from('product_field_configs')
+        .select('field_key')
+        .eq('user_id', userId)
+        .ilike('field_key', field.fieldKey);
+
+      if (existingFields && existingFields.length > 0) {
+        throw new Error(`A field with key "${field.fieldKey}" already exists`);
+      }
+
       // Just insert the field - no checking, no restrictions
       const { data, error } = await supabase
         .from('product_field_configs')

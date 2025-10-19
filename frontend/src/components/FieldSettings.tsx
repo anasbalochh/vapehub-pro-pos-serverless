@@ -93,6 +93,12 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
       return;
     }
 
+    // Prevent disabling all fields
+    if (!isActive && fields.filter(f => f.isActive).length <= 1) {
+      toast.error('At least one field must remain active');
+      return;
+    }
+
     try {
       await fieldConfigApi.updateField(userId, fieldKey, { isActive });
       setFields(prev => prev.map(field =>
@@ -157,14 +163,20 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
   const deleteCustomField = async (fieldKey: string) => {
     if (!confirm('Are you sure you want to delete this custom field?')) return;
 
+    // Prevent deleting all fields
+    if (fields.length <= 1) {
+      toast.error('Cannot delete the last remaining field');
+      return;
+    }
+
     try {
       await fieldConfigApi.deleteCustomField(userId, fieldKey);
       setFields(prev => prev.filter(field => field.fieldKey !== fieldKey));
       onFieldsUpdated(); // Notify parent component
       toast.success('Custom field deleted');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete field:', error);
-      toast.error('Failed to delete field');
+      toast.error(error.message || 'Failed to delete field');
     }
   };
 
@@ -175,7 +187,22 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
       return;
     }
 
-    // Allow completely dynamic field names - no duplicate checking
+    // Check if field key already exists (case-insensitive)
+    const existingField = fields.find(field => 
+      field.fieldKey.toLowerCase() === newField.fieldKey?.toLowerCase()
+    );
+    
+    if (existingField) {
+      toast.error(`A field with key "${newField.fieldKey}" already exists`);
+      return;
+    }
+
+    // Validate field key format (alphanumeric and underscores only)
+    if (!/^[a-zA-Z0-9_]+$/.test(newField.fieldKey)) {
+      toast.error('Field key can only contain letters, numbers, and underscores');
+      return;
+    }
+
     try {
       const nextOrder = Math.max(...fields.map(f => f.displayOrder), 0) + 1;
       await fieldConfigApi.addCustomField(userId, {
@@ -200,9 +227,9 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
       loadData(); // Reload to get the new field
       onFieldsUpdated(); // Notify parent component to refresh fields
       toast.success('Custom field added successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add custom field:', error);
-      toast.error('Failed to add custom field');
+      toast.error(error.message || 'Failed to add custom field');
     }
   };
 
@@ -303,14 +330,26 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
         }
       ];
 
-      // Add each default field
-      for (const field of defaultFields) {
+      // Filter out fields that already exist
+      const fieldsToAdd = defaultFields.filter(defaultField => 
+        !fields.some(existingField => 
+          existingField.fieldKey.toLowerCase() === defaultField.fieldKey.toLowerCase()
+        )
+      );
+
+      if (fieldsToAdd.length === 0) {
+        toast.info('All default fields already exist');
+        return;
+      }
+
+      // Add each default field that doesn't exist
+      for (const field of fieldsToAdd) {
         await fieldConfigApi.addCustomField(userId, field);
       }
 
       loadData(); // Reload to get the new fields
       onFieldsUpdated(); // Notify parent component
-      toast.success('Default fields added successfully');
+      toast.success(`${fieldsToAdd.length} default field(s) added successfully`);
     } catch (error: any) {
       console.error('Failed to initialize default fields:', error);
       toast.error(error.message || 'Failed to add default fields');
