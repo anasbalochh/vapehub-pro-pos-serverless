@@ -258,16 +258,7 @@ export const fieldConfigApi = {
       .single();
 
     if (error) {
-      console.error('Database error details:', error);
-      // Check if table doesn't exist
-      if (error.code === 'PGRST116' || error.message?.includes('relation') || error.message?.includes('does not exist')) {
-        throw new Error('Database table does not exist. Please run the COMPLETE_DATABASE_FIX.sql script in Supabase.');
-      }
-      // Check for permission errors
-      if (error.code === '42501' || error.message?.includes('permission')) {
-        throw new Error('Permission denied. Please check your database permissions and RLS policies.');
-      }
-      throw error;
+      handleDatabaseError(error, 'update field');
     }
 
     // Transform the returned data to frontend format
@@ -301,20 +292,7 @@ export const fieldConfigApi = {
         .single();
 
       if (error) {
-        console.error('Database error details:', error);
-        // Check if table doesn't exist
-        if (error.code === 'PGRST116' || error.message?.includes('relation') || error.message?.includes('does not exist')) {
-          throw new Error('Database table does not exist. Please run the COMPLETE_DATABASE_FIX.sql script in Supabase.');
-        }
-        // Check for permission errors
-        if (error.code === '42501' || error.message?.includes('permission')) {
-          throw new Error('Permission denied. Please check your database permissions and RLS policies.');
-        }
-        // Check for constraint violations
-        if (error.code === '23505') {
-          throw new Error('Field configuration already exists for this user.');
-        }
-        throw error;
+        handleDatabaseError(error, 'add custom field');
       }
 
       // Transform the returned data to frontend format
@@ -337,7 +315,7 @@ export const fieldConfigApi = {
       .eq('is_custom', true);
 
     if (error) {
-      handleDatabaseError(error, 'create product');
+      handleDatabaseError(error, 'delete custom field');
     }
   },
 
@@ -355,7 +333,7 @@ export const fieldConfigApi = {
       .upsert(updates, { onConflict: 'user_id,field_key' });
 
     if (error) {
-      handleDatabaseError(error, 'create product');
+      handleDatabaseError(error, 'reorder fields');
     }
   }
 };

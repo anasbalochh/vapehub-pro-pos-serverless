@@ -89,6 +89,7 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
   const toggleFieldActive = async (fieldKey: string, isActive: boolean) => {
     if (!fieldKey) {
       console.error('Field key is undefined');
+      toast.error('Invalid field key');
       return;
     }
 
@@ -98,10 +99,10 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
         field.fieldKey === fieldKey ? { ...field, isActive } : field
       ));
       onFieldsUpdated(); // Notify parent component
-      toast.success(`Field ${isActive ? 'enabled' : 'disabled'}`);
-    } catch (error) {
+      toast.success(`Field ${isActive ? 'enabled' : 'disabled'} successfully`);
+    } catch (error: any) {
       console.error('Failed to toggle field:', error);
-      toast.error('Failed to update field');
+      toast.error(error.message || 'Failed to update field');
     }
   };
 
@@ -109,6 +110,7 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
   const toggleFieldRequired = async (fieldKey: string, isRequired: boolean) => {
     if (!fieldKey) {
       console.error('Field key is undefined');
+      toast.error('Invalid field key');
       return;
     }
 
@@ -118,10 +120,10 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
         field.fieldKey === fieldKey ? { ...field, isRequired } : field
       ));
       onFieldsUpdated(); // Notify parent component
-      toast.success(`Field requirement ${isRequired ? 'enabled' : 'disabled'}`);
-    } catch (error) {
+      toast.success(`Field requirement ${isRequired ? 'enabled' : 'disabled'} successfully`);
+    } catch (error: any) {
       console.error('Failed to toggle field requirement:', error);
-      toast.error('Failed to update field');
+      toast.error(error.message || 'Failed to update field');
     }
   };
 
