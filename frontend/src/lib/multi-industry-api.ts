@@ -1,14 +1,23 @@
 // Helper function for consistent error handling
 const handleDatabaseError = (error: any, operation: string) => {
   console.error(`Database error details for ${operation}:`, error);
-
+  console.error(`Error code: ${error.code}`);
+  console.error(`Error message: ${error.message}`);
+  console.error(`Error details: ${error.details}`);
+  console.error(`Error hint: ${error.hint}`);
+  
   // Provide specific error messages based on actual error codes
   if (error.code === '23505') {
     // Only show duplicate error for actual unique constraint violations
     if (error.message?.includes('name') || error.message?.includes('sku')) {
       throw new Error('A product with this name or SKU already exists');
+    } else if (error.message?.includes('field_key') || error.message?.includes('field configuration')) {
+      throw new Error('A field with this name already exists');
+    } else if (error.message?.includes('user_id') || error.message?.includes('industry')) {
+      throw new Error('Configuration already exists for this user');
     } else {
-      throw new Error('Duplicate data detected. Please check your input');
+      // Generic duplicate error - don't assume it's a product
+      throw new Error(`Duplicate data detected: ${error.message || 'Please check your input'}`);
     }
   } else if (error.code === '23503') {
     throw new Error('Invalid reference data. Please check your field values');
@@ -67,7 +76,7 @@ export const industriesApi = {
       .order('display_name');
 
     if (error) {
-      handleDatabaseError(error, 'list industries');
+      handleDatabaseError(error, 'create product');
     }
     return { data: data || [] };
   },
@@ -81,7 +90,7 @@ export const industriesApi = {
       .single();
 
     if (error) {
-      handleDatabaseError(error, 'list industries');
+      handleDatabaseError(error, 'create product');
     }
     return { data };
   }
@@ -120,7 +129,7 @@ export const userIndustryApi = {
       .single();
 
     if (error) {
-      handleDatabaseError(error, 'list industries');
+      handleDatabaseError(error, 'create product');
     }
     return { data };
   },
@@ -141,7 +150,7 @@ export const userIndustryApi = {
       .single();
 
     if (error) {
-      handleDatabaseError(error, 'list industries');
+      handleDatabaseError(error, 'create product');
     }
     return { data };
   }
@@ -214,7 +223,7 @@ export const fieldConfigApi = {
       .order('display_order');
 
     if (error) {
-      handleDatabaseError(error, 'list industries');
+      handleDatabaseError(error, 'create product');
     }
     return { data: data || [] };
   },
@@ -328,7 +337,7 @@ export const fieldConfigApi = {
       .eq('is_custom', true);
 
     if (error) {
-      handleDatabaseError(error, 'list industries');
+      handleDatabaseError(error, 'create product');
     }
   },
 
@@ -346,7 +355,7 @@ export const fieldConfigApi = {
       .upsert(updates, { onConflict: 'user_id,field_key' });
 
     if (error) {
-      handleDatabaseError(error, 'list industries');
+      handleDatabaseError(error, 'create product');
     }
   }
 };
@@ -367,7 +376,7 @@ export const dynamicProductsApi = {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
-      handleDatabaseError(error, 'list industries');
+      handleDatabaseError(error, 'create product');
     }
 
     // Transform the data to include customData
@@ -399,10 +408,10 @@ export const dynamicProductsApi = {
       .from('products')
       .insert({
         user_id: userId,
-        sku: sku || 'N/A',
-        name: name || 'N/A',
-        brand: brand || 'N/A',
-        category: category || 'N/A',
+        sku: sku || `SKU-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: name || `Product-${Date.now()}`,
+        brand: brand || 'Unknown',
+        category: category || 'General',
         sale_price: salePrice || null,
         retail_price: retailPrice || null,
         stock: processedStock,
@@ -413,7 +422,7 @@ export const dynamicProductsApi = {
       .single();
 
     if (error) {
-      handleDatabaseError(error, 'list industries');
+      handleDatabaseError(error, 'create product');
     }
 
     // Transform the returned data to include customData
@@ -459,7 +468,7 @@ export const dynamicProductsApi = {
       .single();
 
     if (error) {
-      handleDatabaseError(error, 'list industries');
+      handleDatabaseError(error, 'create product');
     }
 
     // Transform the returned data to include customData
@@ -479,7 +488,7 @@ export const dynamicProductsApi = {
       .eq('id', productId);
 
     if (error) {
-      handleDatabaseError(error, 'list industries');
+      handleDatabaseError(error, 'create product');
     }
   }
 };
