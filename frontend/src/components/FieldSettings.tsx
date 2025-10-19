@@ -173,12 +173,7 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
       return;
     }
 
-    // Check if field key already exists
-    if (fields.some(field => field.fieldKey === newField.fieldKey)) {
-      toast.error('Field key already exists');
-      return;
-    }
-
+    // Allow completely dynamic field names - no duplicate checking
     try {
       const nextOrder = Math.max(...fields.map(f => f.displayOrder), 0) + 1;
       await fieldConfigApi.addCustomField(userId, {

@@ -1,5 +1,52 @@
+// Helper function for consistent error handling
+const handleDatabaseError = (error: any, operation: string) => {
+  console.error(`Database error details for ${operation}:`, error);
+
+  // Provide specific error messages based on actual error codes
+  if (error.code === '23505') {
+    // Only show duplicate error for actual unique constraint violations
+    if (error.message?.includes('name') || error.message?.includes('sku')) {
+      throw new Error('A product with this name or SKU already exists');
+    } else {
+      throw new Error('Duplicate data detected. Please check your input');
+    }
+  } else if (error.code === '23503') {
+    throw new Error('Invalid reference data. Please check your field values');
+  } else if (error.code === '22P02') {
+    throw new Error('Invalid data format. Please check your field values');
+  } else if (error.code === '42501') {
+    throw new Error('Permission denied. Please check your database access');
+  } else if (error.code === 'PGRST116') {
+    throw new Error('Database table does not exist. Please run the setup script');
+  } else if (error.message?.includes('invalid input syntax')) {
+    throw new Error('Invalid data format. Please check your field values');
+  } else if (error.message?.includes('duplicate')) {
+    throw new Error('Duplicate data detected. Please check your input');
+  } else {
+    throw new Error(error.message || `Failed to ${operation}`);
+  }
+};
+
+// Helper function for field transformation
+const transformFieldToFrontend = (field: any): ProductFieldConfig => ({
+  id: field.id,
+  userId: field.user_id,
+  fieldKey: field.field_key,
+  fieldLabel: field.field_label,
+  fieldType: field.field_type,
+  isRequired: field.is_required,
+  isActive: field.is_active,
+  fieldOptions: field.field_options || [],
+  validationRules: field.validation_rules || {},
+  placeholderText: field.placeholder_text || '',
+  helpText: field.help_text || '',
+  displayOrder: field.display_order || 0,
+  isCustom: field.is_custom || false,
+  createdAt: field.created_at,
+  updatedAt: field.updated_at
+});
+
 // Multi-Industry Field Configuration API
-// Add this to your existing lib/api.ts or create a new file
 
 import type {
   DynamicProduct,
@@ -20,31 +67,7 @@ export const industriesApi = {
       .order('display_name');
 
     if (error) {
-      console.error('Database error details:', error);
-
-      // Provide specific error messages based on actual error codes
-      if (error.code === '23505') {
-        // Only show duplicate error for actual unique constraint violations
-        if (error.message?.includes('name') || error.message?.includes('sku')) {
-          throw new Error('A product with this name or SKU already exists');
-        } else {
-          throw new Error('Duplicate data detected. Please check your input');
-        }
-      } else if (error.code === '23503') {
-        throw new Error('Invalid reference data. Please check your field values');
-      } else if (error.code === '22P02') {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.code === '42501') {
-        throw new Error('Permission denied. Please check your database access');
-      } else if (error.code === 'PGRST116') {
-        throw new Error('Database table does not exist. Please run the setup script');
-      } else if (error.message?.includes('invalid input syntax')) {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.message?.includes('duplicate')) {
-        throw new Error('Duplicate data detected. Please check your input');
-      } else {
-        throw new Error(error.message || 'Failed to create product');
-      }
+      handleDatabaseError(error, 'list industries');
     }
     return { data: data || [] };
   },
@@ -58,31 +81,7 @@ export const industriesApi = {
       .single();
 
     if (error) {
-      console.error('Database error details:', error);
-
-      // Provide specific error messages based on actual error codes
-      if (error.code === '23505') {
-        // Only show duplicate error for actual unique constraint violations
-        if (error.message?.includes('name') || error.message?.includes('sku')) {
-          throw new Error('A product with this name or SKU already exists');
-        } else {
-          throw new Error('Duplicate data detected. Please check your input');
-        }
-      } else if (error.code === '23503') {
-        throw new Error('Invalid reference data. Please check your field values');
-      } else if (error.code === '22P02') {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.code === '42501') {
-        throw new Error('Permission denied. Please check your database access');
-      } else if (error.code === 'PGRST116') {
-        throw new Error('Database table does not exist. Please run the setup script');
-      } else if (error.message?.includes('invalid input syntax')) {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.message?.includes('duplicate')) {
-        throw new Error('Duplicate data detected. Please check your input');
-      } else {
-        throw new Error(error.message || 'Failed to create product');
-      }
+      handleDatabaseError(error, 'list industries');
     }
     return { data };
   }
@@ -121,31 +120,7 @@ export const userIndustryApi = {
       .single();
 
     if (error) {
-      console.error('Database error details:', error);
-
-      // Provide specific error messages based on actual error codes
-      if (error.code === '23505') {
-        // Only show duplicate error for actual unique constraint violations
-        if (error.message?.includes('name') || error.message?.includes('sku')) {
-          throw new Error('A product with this name or SKU already exists');
-        } else {
-          throw new Error('Duplicate data detected. Please check your input');
-        }
-      } else if (error.code === '23503') {
-        throw new Error('Invalid reference data. Please check your field values');
-      } else if (error.code === '22P02') {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.code === '42501') {
-        throw new Error('Permission denied. Please check your database access');
-      } else if (error.code === 'PGRST116') {
-        throw new Error('Database table does not exist. Please run the setup script');
-      } else if (error.message?.includes('invalid input syntax')) {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.message?.includes('duplicate')) {
-        throw new Error('Duplicate data detected. Please check your input');
-      } else {
-        throw new Error(error.message || 'Failed to create product');
-      }
+      handleDatabaseError(error, 'list industries');
     }
     return { data };
   },
@@ -166,31 +141,7 @@ export const userIndustryApi = {
       .single();
 
     if (error) {
-      console.error('Database error details:', error);
-
-      // Provide specific error messages based on actual error codes
-      if (error.code === '23505') {
-        // Only show duplicate error for actual unique constraint violations
-        if (error.message?.includes('name') || error.message?.includes('sku')) {
-          throw new Error('A product with this name or SKU already exists');
-        } else {
-          throw new Error('Duplicate data detected. Please check your input');
-        }
-      } else if (error.code === '23503') {
-        throw new Error('Invalid reference data. Please check your field values');
-      } else if (error.code === '22P02') {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.code === '42501') {
-        throw new Error('Permission denied. Please check your database access');
-      } else if (error.code === 'PGRST116') {
-        throw new Error('Database table does not exist. Please run the setup script');
-      } else if (error.message?.includes('invalid input syntax')) {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.message?.includes('duplicate')) {
-        throw new Error('Duplicate data detected. Please check your input');
-      } else {
-        throw new Error(error.message || 'Failed to create product');
-      }
+      handleDatabaseError(error, 'list industries');
     }
     return { data };
   }
@@ -224,22 +175,7 @@ export const fieldConfigApi = {
       }
 
       // Transform database fields to frontend format (snake_case to camelCase)
-      const transformedFields = (data || []).map(field => ({
-        id: field.id,
-        fieldKey: field.field_key,
-        fieldLabel: field.field_label,
-        fieldType: field.field_type,
-        isRequired: field.is_required,
-        isActive: field.is_active,
-        fieldOptions: field.field_options || [],
-        validationRules: field.validation_rules || {},
-        placeholderText: field.placeholder_text || '',
-        helpText: field.help_text || '',
-        displayOrder: field.display_order || 0,
-        isCustom: field.is_custom || false,
-        createdAt: field.created_at,
-        updatedAt: field.updated_at
-      }));
+      const transformedFields = (data || []).map(transformFieldToFrontend);
 
       return { data: transformedFields };
     } catch (error) {
@@ -278,31 +214,7 @@ export const fieldConfigApi = {
       .order('display_order');
 
     if (error) {
-      console.error('Database error details:', error);
-
-      // Provide specific error messages based on actual error codes
-      if (error.code === '23505') {
-        // Only show duplicate error for actual unique constraint violations
-        if (error.message?.includes('name') || error.message?.includes('sku')) {
-          throw new Error('A product with this name or SKU already exists');
-        } else {
-          throw new Error('Duplicate data detected. Please check your input');
-        }
-      } else if (error.code === '23503') {
-        throw new Error('Invalid reference data. Please check your field values');
-      } else if (error.code === '22P02') {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.code === '42501') {
-        throw new Error('Permission denied. Please check your database access');
-      } else if (error.code === 'PGRST116') {
-        throw new Error('Database table does not exist. Please run the setup script');
-      } else if (error.message?.includes('invalid input syntax')) {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.message?.includes('duplicate')) {
-        throw new Error('Duplicate data detected. Please check your input');
-      } else {
-        throw new Error(error.message || 'Failed to create product');
-      }
+      handleDatabaseError(error, 'list industries');
     }
     return { data: data || [] };
   },
@@ -350,93 +262,11 @@ export const fieldConfigApi = {
     }
 
     // Transform the returned data to frontend format
-    const transformedField = {
-      id: data.id,
-      fieldKey: data.field_key,
-      fieldLabel: data.field_label,
-      fieldType: data.field_type,
-      isRequired: data.is_required,
-      isActive: data.is_active,
-      fieldOptions: data.field_options || [],
-      validationRules: data.validation_rules || {},
-      placeholderText: data.placeholder_text || '',
-      helpText: data.help_text || '',
-      displayOrder: data.display_order || 0,
-      isCustom: data.is_custom || false,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    };
+    const transformedField = transformFieldToFrontend(data);
 
     return { data: transformedField };
   },
 
-  // Manual cleanup function (can be called from UI)
-  async cleanupDuplicates(userId: string): Promise<{ data: ProductFieldConfig[] }> {
-    return this.cleanupDuplicateFields(userId);
-  },
-  async cleanupDuplicateFields(userId: string): Promise<{ data: ProductFieldConfig[] }> {
-    try {
-      // Get all fields for the user
-      const { data: allFields, error: fetchError } = await supabase
-        .from('product_field_configs')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: true });
-
-      if (fetchError) throw fetchError;
-
-      // Group by field_key to find duplicates
-      const fieldGroups = (allFields || []).reduce((acc, field) => {
-        if (!acc[field.field_key]) {
-          acc[field.field_key] = [];
-        }
-        acc[field.field_key].push(field);
-        return acc;
-      }, {} as Record<string, any[]>);
-
-      // Keep only the first occurrence of each field_key, delete the rest
-      const fieldsToDelete: string[] = [];
-      Object.values(fieldGroups).forEach(group => {
-        if (group.length > 1) {
-          // Keep the first one, mark others for deletion
-          fieldsToDelete.push(...group.slice(1).map(f => f.id));
-        }
-      });
-
-      if (fieldsToDelete.length > 0) {
-        const { error: deleteError } = await supabase
-          .from('product_field_configs')
-          .delete()
-          .in('id', fieldsToDelete);
-
-        if (deleteError) throw deleteError;
-      }
-
-      // Return the cleaned fields
-      const cleanedFields = (allFields || []).filter(field => !fieldsToDelete.includes(field.id));
-      const transformedFields = cleanedFields.map(field => ({
-        id: field.id,
-        fieldKey: field.field_key,
-        fieldLabel: field.field_label,
-        fieldType: field.field_type,
-        isRequired: field.is_required,
-        isActive: field.is_active,
-        fieldOptions: field.field_options || [],
-        validationRules: field.validation_rules || {},
-        placeholderText: field.placeholder_text || '',
-        helpText: field.help_text || '',
-        displayOrder: field.display_order || 0,
-        isCustom: field.is_custom || false,
-        createdAt: field.created_at,
-        updatedAt: field.updated_at
-      }));
-
-      return { data: transformedFields };
-    } catch (error) {
-      console.error('Failed to cleanup duplicate fields:', error);
-      throw error;
-    }
-  },
 
   // Add custom field - COMPLETELY DYNAMIC
   async addCustomField(userId: string, field: Omit<ProductFieldConfig, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<{ data: ProductFieldConfig }> {
@@ -479,22 +309,7 @@ export const fieldConfigApi = {
       }
 
       // Transform the returned data to frontend format
-      const transformedField = {
-        id: data.id,
-        fieldKey: data.field_key,
-        fieldLabel: data.field_label,
-        fieldType: data.field_type,
-        isRequired: data.is_required,
-        isActive: data.is_active,
-        fieldOptions: data.field_options || [],
-        validationRules: data.validation_rules || {},
-        placeholderText: data.placeholder_text || '',
-        helpText: data.help_text || '',
-        displayOrder: data.display_order || 0,
-        isCustom: data.is_custom || false,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      };
+      const transformedField = transformFieldToFrontend(data);
 
       return { data: transformedField };
     } catch (error) {
@@ -513,31 +328,7 @@ export const fieldConfigApi = {
       .eq('is_custom', true);
 
     if (error) {
-      console.error('Database error details:', error);
-
-      // Provide specific error messages based on actual error codes
-      if (error.code === '23505') {
-        // Only show duplicate error for actual unique constraint violations
-        if (error.message?.includes('name') || error.message?.includes('sku')) {
-          throw new Error('A product with this name or SKU already exists');
-        } else {
-          throw new Error('Duplicate data detected. Please check your input');
-        }
-      } else if (error.code === '23503') {
-        throw new Error('Invalid reference data. Please check your field values');
-      } else if (error.code === '22P02') {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.code === '42501') {
-        throw new Error('Permission denied. Please check your database access');
-      } else if (error.code === 'PGRST116') {
-        throw new Error('Database table does not exist. Please run the setup script');
-      } else if (error.message?.includes('invalid input syntax')) {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.message?.includes('duplicate')) {
-        throw new Error('Duplicate data detected. Please check your input');
-      } else {
-        throw new Error(error.message || 'Failed to create product');
-      }
+      handleDatabaseError(error, 'list industries');
     }
   },
 
@@ -555,31 +346,7 @@ export const fieldConfigApi = {
       .upsert(updates, { onConflict: 'user_id,field_key' });
 
     if (error) {
-      console.error('Database error details:', error);
-
-      // Provide specific error messages based on actual error codes
-      if (error.code === '23505') {
-        // Only show duplicate error for actual unique constraint violations
-        if (error.message?.includes('name') || error.message?.includes('sku')) {
-          throw new Error('A product with this name or SKU already exists');
-        } else {
-          throw new Error('Duplicate data detected. Please check your input');
-        }
-      } else if (error.code === '23503') {
-        throw new Error('Invalid reference data. Please check your field values');
-      } else if (error.code === '22P02') {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.code === '42501') {
-        throw new Error('Permission denied. Please check your database access');
-      } else if (error.code === 'PGRST116') {
-        throw new Error('Database table does not exist. Please run the setup script');
-      } else if (error.message?.includes('invalid input syntax')) {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.message?.includes('duplicate')) {
-        throw new Error('Duplicate data detected. Please check your input');
-      } else {
-        throw new Error(error.message || 'Failed to create product');
-      }
+      handleDatabaseError(error, 'list industries');
     }
   }
 };
@@ -600,31 +367,7 @@ export const dynamicProductsApi = {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Database error details:', error);
-
-      // Provide specific error messages based on actual error codes
-      if (error.code === '23505') {
-        // Only show duplicate error for actual unique constraint violations
-        if (error.message?.includes('name') || error.message?.includes('sku')) {
-          throw new Error('A product with this name or SKU already exists');
-        } else {
-          throw new Error('Duplicate data detected. Please check your input');
-        }
-      } else if (error.code === '23503') {
-        throw new Error('Invalid reference data. Please check your field values');
-      } else if (error.code === '22P02') {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.code === '42501') {
-        throw new Error('Permission denied. Please check your database access');
-      } else if (error.code === 'PGRST116') {
-        throw new Error('Database table does not exist. Please run the setup script');
-      } else if (error.message?.includes('invalid input syntax')) {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.message?.includes('duplicate')) {
-        throw new Error('Duplicate data detected. Please check your input');
-      } else {
-        throw new Error(error.message || 'Failed to create product');
-      }
+      handleDatabaseError(error, 'list industries');
     }
 
     // Transform the data to include customData
@@ -670,31 +413,7 @@ export const dynamicProductsApi = {
       .single();
 
     if (error) {
-      console.error('Database error details:', error);
-
-      // Provide specific error messages based on actual error codes
-      if (error.code === '23505') {
-        // Only show duplicate error for actual unique constraint violations
-        if (error.message?.includes('name') || error.message?.includes('sku')) {
-          throw new Error('A product with this name or SKU already exists');
-        } else {
-          throw new Error('Duplicate data detected. Please check your input');
-        }
-      } else if (error.code === '23503') {
-        throw new Error('Invalid reference data. Please check your field values');
-      } else if (error.code === '22P02') {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.code === '42501') {
-        throw new Error('Permission denied. Please check your database access');
-      } else if (error.code === 'PGRST116') {
-        throw new Error('Database table does not exist. Please run the setup script');
-      } else if (error.message?.includes('invalid input syntax')) {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.message?.includes('duplicate')) {
-        throw new Error('Duplicate data detected. Please check your input');
-      } else {
-        throw new Error(error.message || 'Failed to create product');
-      }
+      handleDatabaseError(error, 'list industries');
     }
 
     // Transform the returned data to include customData
@@ -740,31 +459,7 @@ export const dynamicProductsApi = {
       .single();
 
     if (error) {
-      console.error('Database error details:', error);
-
-      // Provide specific error messages based on actual error codes
-      if (error.code === '23505') {
-        // Only show duplicate error for actual unique constraint violations
-        if (error.message?.includes('name') || error.message?.includes('sku')) {
-          throw new Error('A product with this name or SKU already exists');
-        } else {
-          throw new Error('Duplicate data detected. Please check your input');
-        }
-      } else if (error.code === '23503') {
-        throw new Error('Invalid reference data. Please check your field values');
-      } else if (error.code === '22P02') {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.code === '42501') {
-        throw new Error('Permission denied. Please check your database access');
-      } else if (error.code === 'PGRST116') {
-        throw new Error('Database table does not exist. Please run the setup script');
-      } else if (error.message?.includes('invalid input syntax')) {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.message?.includes('duplicate')) {
-        throw new Error('Duplicate data detected. Please check your input');
-      } else {
-        throw new Error(error.message || 'Failed to create product');
-      }
+      handleDatabaseError(error, 'list industries');
     }
 
     // Transform the returned data to include customData
@@ -784,31 +479,7 @@ export const dynamicProductsApi = {
       .eq('id', productId);
 
     if (error) {
-      console.error('Database error details:', error);
-
-      // Provide specific error messages based on actual error codes
-      if (error.code === '23505') {
-        // Only show duplicate error for actual unique constraint violations
-        if (error.message?.includes('name') || error.message?.includes('sku')) {
-          throw new Error('A product with this name or SKU already exists');
-        } else {
-          throw new Error('Duplicate data detected. Please check your input');
-        }
-      } else if (error.code === '23503') {
-        throw new Error('Invalid reference data. Please check your field values');
-      } else if (error.code === '22P02') {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.code === '42501') {
-        throw new Error('Permission denied. Please check your database access');
-      } else if (error.code === 'PGRST116') {
-        throw new Error('Database table does not exist. Please run the setup script');
-      } else if (error.message?.includes('invalid input syntax')) {
-        throw new Error('Invalid data format. Please check your field values');
-      } else if (error.message?.includes('duplicate')) {
-        throw new Error('Duplicate data detected. Please check your input');
-      } else {
-        throw new Error(error.message || 'Failed to create product');
-      }
+      handleDatabaseError(error, 'list industries');
     }
   }
 };

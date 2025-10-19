@@ -103,8 +103,8 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
     }));
 
     // Store date in user-friendly format (MM/DD/YYYY)
-    handleFieldChange(fieldKey, date ? 
-      `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}/${date.getFullYear()}` 
+    handleFieldChange(fieldKey, date ?
+      `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}/${date.getFullYear()}`
       : '');
   };
 

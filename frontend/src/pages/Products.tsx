@@ -379,7 +379,7 @@ const Products = () => {
                                   // Handle ISO format
                                   date = new Date(value);
                                 }
-                                
+
                                 if (!isNaN(date.getTime())) {
                                   return date.toLocaleDateString('en-US', {
                                     year: 'numeric',
