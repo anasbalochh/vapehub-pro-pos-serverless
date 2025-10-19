@@ -45,6 +45,115 @@ const Products = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
     const { user } = useAuth();
 
+  // Initialize default fields for new users
+  const initializeDefaultFields = async (userId: string) => {
+    try {
+      const defaultFields = [
+        {
+          fieldKey: 'sku',
+          fieldLabel: 'SKU',
+          fieldType: 'text' as const,
+          isRequired: true,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: {},
+          placeholderText: 'Enter product SKU',
+          helpText: 'Unique product identifier',
+          displayOrder: 1,
+          isCustom: false
+        },
+        {
+          fieldKey: 'name',
+          fieldLabel: 'Product Name',
+          fieldType: 'text' as const,
+          isRequired: true,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: {},
+          placeholderText: 'Enter product name',
+          helpText: 'Name of the product',
+          displayOrder: 2,
+          isCustom: false
+        },
+        {
+          fieldKey: 'brand',
+          fieldLabel: 'Brand',
+          fieldType: 'text' as const,
+          isRequired: false,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: {},
+          placeholderText: 'Enter brand name',
+          helpText: 'Product brand',
+          displayOrder: 3,
+          isCustom: false
+        },
+        {
+          fieldKey: 'category',
+          fieldLabel: 'Category',
+          fieldType: 'text' as const,
+          isRequired: false,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: {},
+          placeholderText: 'Enter category',
+          helpText: 'Product category',
+          displayOrder: 4,
+          isCustom: false
+        },
+        {
+          fieldKey: 'salePrice',
+          fieldLabel: 'Sale Price',
+          fieldType: 'number' as const,
+          isRequired: true,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: { min: 0 },
+          placeholderText: 'Enter sale price',
+          helpText: 'Price at which product is sold',
+          displayOrder: 5,
+          isCustom: false
+        },
+        {
+          fieldKey: 'retailPrice',
+          fieldLabel: 'Retail Price',
+          fieldType: 'number' as const,
+          isRequired: false,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: { min: 0 },
+          placeholderText: 'Enter retail price',
+          helpText: 'Original retail price',
+          displayOrder: 6,
+          isCustom: false
+        },
+        {
+          fieldKey: 'stock',
+          fieldLabel: 'Stock',
+          fieldType: 'number' as const,
+          isRequired: true,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: { min: 0 },
+          placeholderText: 'Enter stock quantity',
+          helpText: 'Available stock quantity',
+          displayOrder: 7,
+          isCustom: false
+        }
+      ];
+
+      // Add each default field
+      for (const field of defaultFields) {
+        await fieldConfigApi.addCustomField(userId, field);
+      }
+
+      toast.success('Default fields initialized successfully');
+    } catch (error: any) {
+      console.error('Failed to initialize default fields:', error);
+      toast.error('Failed to initialize default fields');
+    }
+  };
+
   // Load all data
   const loadData = useCallback(async () => {
     if (!user?.id) return;
@@ -59,7 +168,13 @@ const Products = () => {
       setProducts(productsResponse.data || []);
       setFields(fieldsResponse.data || []);
 
-      // Completely customizable - no automatic fields, user designs their own
+      // Initialize default fields if user has no fields configured
+      if (fieldsResponse.data.length === 0) {
+        await initializeDefaultFields(user.id);
+        // Reload fields after initialization
+        const updatedFieldsResponse = await fieldConfigApi.getUserFields(user.id);
+        setFields(updatedFieldsResponse.data || []);
+      }
 
     } catch (error: any) {
       console.error('Failed to load data:', error);

@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { fieldConfigApi } from '@/lib/multi-industry-api';
 import type { ProductFieldConfig } from '@/types/multi-industry';
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
-import { Edit, GripVertical, Plus, Save, Trash2, X } from "lucide-react";
+import { Edit, GripVertical, Plus, Save, Settings, Trash2, X } from "lucide-react";
 import React, { useEffect, useState } from 'react';
 import { toast } from "sonner";
 
@@ -206,6 +206,117 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
     }
   };
 
+  // Initialize default fields
+  const initializeDefaultFields = async () => {
+    try {
+      const defaultFields = [
+        {
+          fieldKey: 'sku',
+          fieldLabel: 'SKU',
+          fieldType: 'text' as const,
+          isRequired: true,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: {},
+          placeholderText: 'Enter product SKU',
+          helpText: 'Unique product identifier',
+          displayOrder: Math.max(...fields.map(f => f.displayOrder), 0) + 1,
+          isCustom: false
+        },
+        {
+          fieldKey: 'name',
+          fieldLabel: 'Product Name',
+          fieldType: 'text' as const,
+          isRequired: true,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: {},
+          placeholderText: 'Enter product name',
+          helpText: 'Name of the product',
+          displayOrder: Math.max(...fields.map(f => f.displayOrder), 0) + 2,
+          isCustom: false
+        },
+        {
+          fieldKey: 'brand',
+          fieldLabel: 'Brand',
+          fieldType: 'text' as const,
+          isRequired: false,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: {},
+          placeholderText: 'Enter brand name',
+          helpText: 'Product brand',
+          displayOrder: Math.max(...fields.map(f => f.displayOrder), 0) + 3,
+          isCustom: false
+        },
+        {
+          fieldKey: 'category',
+          fieldLabel: 'Category',
+          fieldType: 'text' as const,
+          isRequired: false,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: {},
+          placeholderText: 'Enter category',
+          helpText: 'Product category',
+          displayOrder: Math.max(...fields.map(f => f.displayOrder), 0) + 4,
+          isCustom: false
+        },
+        {
+          fieldKey: 'salePrice',
+          fieldLabel: 'Sale Price',
+          fieldType: 'number' as const,
+          isRequired: true,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: { min: 0 },
+          placeholderText: 'Enter sale price',
+          helpText: 'Price at which product is sold',
+          displayOrder: Math.max(...fields.map(f => f.displayOrder), 0) + 5,
+          isCustom: false
+        },
+        {
+          fieldKey: 'retailPrice',
+          fieldLabel: 'Retail Price',
+          fieldType: 'number' as const,
+          isRequired: false,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: { min: 0 },
+          placeholderText: 'Enter retail price',
+          helpText: 'Original retail price',
+          displayOrder: Math.max(...fields.map(f => f.displayOrder), 0) + 6,
+          isCustom: false
+        },
+        {
+          fieldKey: 'stock',
+          fieldLabel: 'Stock',
+          fieldType: 'number' as const,
+          isRequired: true,
+          isActive: true,
+          fieldOptions: [],
+          validationRules: { min: 0 },
+          placeholderText: 'Enter stock quantity',
+          helpText: 'Available stock quantity',
+          displayOrder: Math.max(...fields.map(f => f.displayOrder), 0) + 7,
+          isCustom: false
+        }
+      ];
+
+      // Add each default field
+      for (const field of defaultFields) {
+        await fieldConfigApi.addCustomField(userId, field);
+      }
+
+      loadData(); // Reload to get the new fields
+      onFieldsUpdated(); // Notify parent component
+      toast.success('Default fields added successfully');
+    } catch (error: any) {
+      console.error('Failed to initialize default fields:', error);
+      toast.error(error.message || 'Failed to add default fields');
+    }
+  };
+
   if (isLoading) {
     return <div className="p-6">Loading field settings...</div>;
   }
@@ -225,6 +336,14 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
           >
             <Plus className="h-4 w-4" />
             Add Custom Field
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={initializeDefaultFields}
+            className="flex items-center gap-2"
+          >
+            <Settings className="h-4 w-4" />
+            Add Default Fields
           </Button>
         </div>
       </div>
