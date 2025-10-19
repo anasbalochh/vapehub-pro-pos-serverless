@@ -120,5 +120,5 @@ export default defineConfig(({ mode }) => ({
     sourcemap: false, // Disable sourcemaps for production to reduce size
   },
   // Ensure proper base path for deployment
-  base: '/',
+  base: process.env.NODE_ENV === 'production' ? '/' : '/',
 }));

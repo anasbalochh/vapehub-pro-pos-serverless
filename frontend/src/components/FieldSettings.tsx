@@ -188,10 +188,10 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
     }
 
     // Check if field key already exists (case-insensitive)
-    const existingField = fields.find(field => 
+    const existingField = fields.find(field =>
       field.fieldKey.toLowerCase() === newField.fieldKey?.toLowerCase()
     );
-    
+
     if (existingField) {
       toast.error(`A field with key "${newField.fieldKey}" already exists`);
       return;
@@ -331,8 +331,8 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
       ];
 
       // Filter out fields that already exist
-      const fieldsToAdd = defaultFields.filter(defaultField => 
-        !fields.some(existingField => 
+      const fieldsToAdd = defaultFields.filter(defaultField =>
+        !fields.some(existingField =>
           existingField.fieldKey.toLowerCase() === defaultField.fieldKey.toLowerCase()
         )
       );
