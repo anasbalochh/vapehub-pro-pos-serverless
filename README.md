@@ -9,6 +9,7 @@ This project is configured for automatic deployment to Vercel at: **vapehub-pro-
 ### Quick Deploy to Vercel:
 
 1. **Connect to Vercel:**
+
    ```bash
    npm i -g vercel
    vercel login
