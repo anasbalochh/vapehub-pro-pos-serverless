@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { Input } from "@/components/ui/input";
-import { Search, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from "@/components/ui/table";
-import { toast } from "sonner";
-import { productsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { dynamicProductsApi } from "@/lib/multi-industry-api";
+import { Minus, Plus, Search } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface StockItem {
   _id: string;
@@ -48,7 +48,7 @@ const Stock = () => {
     try {
       console.log('Stock: Loading stock items for user:', user.id, 'with search term:', debouncedSearchTerm);
 
-      const response = await productsApi.list(debouncedSearchTerm);
+      const response = await dynamicProductsApi.list(user.id, debouncedSearchTerm);
       console.log('Stock: Successfully loaded', response.data.length, 'products from Supabase');
 
       // Map to stock items format
@@ -90,7 +90,7 @@ const Stock = () => {
     const newStock = Math.max(0, (current.stock ?? 0) + delta);
     setStockItems(stockItems.map((i) => (i._id === id ? { ...i, stock: newStock } : i)));
     try {
-      await productsApi.update(id, { stock: newStock });
+      await dynamicProductsApi.update(id, { stock: newStock });
       toast.success(`Stock ${delta > 0 ? "increased" : "decreased"} successfully!`);
     } catch (e) {
       console.error(e);

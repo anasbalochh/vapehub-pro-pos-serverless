@@ -317,38 +317,178 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
       {sortedFields.length === 0 ? (
         <div className="text-center py-8">
           <div className="text-muted-foreground mb-4">
+            <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+              </svg>
+            </div>
             <h3 className="text-lg font-semibold mb-2">No Fields Configured</h3>
-            <p>Please configure your product fields in Field Settings first.</p>
-            <p className="text-sm mt-2">This allows you to customize the form for your specific business needs.</p>
+            <p className="mb-2">Please configure your product fields in Field Settings first.</p>
+            <p className="text-sm">This allows you to customize the form for your specific business needs.</p>
           </div>
         </div>
       ) : (
-        <div className="grid gap-4">
-          {sortedFields.map((field) => (
-            <div key={field.fieldKey} className="space-y-2">
-              <Label
-                htmlFor={field.fieldKey}
-                className="text-sm font-medium text-foreground"
-              >
-                {field.fieldLabel}
-                {field.isRequired && <span className="text-destructive ml-1">*</span>}
-              </Label>
+        <div className="space-y-6">
+          {/* Core Product Information Section */}
+          <div className="bg-gradient-to-r from-primary/5 to-accent/5 p-4 rounded-lg border border-primary/20">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <div className="w-2 h-2 bg-primary rounded-full"></div>
+              Core Product Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* SKU Field */}
+              <div className="space-y-2">
+                <Label htmlFor="sku" className="text-sm font-medium text-foreground">
+                  SKU (Stock Keeping Unit)
+                  <span className="text-destructive ml-1">*</span>
+                </Label>
+                <Input
+                  id="sku"
+                  value={formData.sku || ''}
+                  onChange={(e) => handleFieldChange('sku', e.target.value)}
+                  placeholder="Enter product SKU (e.g., VAPE-001)"
+                  className="bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary"
+                />
+                {errors.sku && <p className="text-sm text-destructive">{errors.sku}</p>}
+              </div>
 
-              {renderField(field)}
+              {/* Name Field */}
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-medium text-foreground">
+                  Product Name
+                  <span className="text-destructive ml-1">*</span>
+                </Label>
+                <Input
+                  id="name"
+                  value={formData.name || ''}
+                  onChange={(e) => handleFieldChange('name', e.target.value)}
+                  placeholder="Enter product name"
+                  className="bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary"
+                />
+                {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+              </div>
 
-              {field.helpText && (
-                <p className="text-xs text-muted-foreground">{field.helpText}</p>
-              )}
+              {/* Brand Field */}
+              <div className="space-y-2">
+                <Label htmlFor="brand" className="text-sm font-medium text-foreground">
+                  Brand
+                </Label>
+                <Input
+                  id="brand"
+                  value={formData.brand || ''}
+                  onChange={(e) => handleFieldChange('brand', e.target.value)}
+                  placeholder="Enter brand name"
+                  className="bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary"
+                />
+              </div>
 
-              {errors[field.fieldKey] && (
-                <p className="text-sm text-destructive">{errors[field.fieldKey]}</p>
-              )}
+              {/* Category Field */}
+              <div className="space-y-2">
+                <Label htmlFor="category" className="text-sm font-medium text-foreground">
+                  Category
+                </Label>
+                <Input
+                  id="category"
+                  value={formData.category || ''}
+                  onChange={(e) => handleFieldChange('category', e.target.value)}
+                  placeholder="Enter category"
+                  className="bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              {/* Price Fields */}
+              <div className="space-y-2">
+                <Label htmlFor="salePrice" className="text-sm font-medium text-foreground">
+                  Sale Price (₨)
+                  <span className="text-destructive ml-1">*</span>
+                </Label>
+                <Input
+                  id="salePrice"
+                  type="number"
+                  value={formData.salePrice || ''}
+                  onChange={(e) => handleFieldChange('salePrice', e.target.value)}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  className="bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary"
+                />
+                {errors.salePrice && <p className="text-sm text-destructive">{errors.salePrice}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="retailPrice" className="text-sm font-medium text-foreground">
+                  Retail Price (₨)
+                </Label>
+                <Input
+                  id="retailPrice"
+                  type="number"
+                  value={formData.retailPrice || ''}
+                  onChange={(e) => handleFieldChange('retailPrice', e.target.value)}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  className="bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              {/* Stock Field */}
+              <div className="space-y-2">
+                <Label htmlFor="stock" className="text-sm font-medium text-foreground">
+                  Stock Quantity
+                  <span className="text-destructive ml-1">*</span>
+                </Label>
+                <Input
+                  id="stock"
+                  type="number"
+                  value={formData.stock || ''}
+                  onChange={(e) => handleFieldChange('stock', e.target.value)}
+                  placeholder="0"
+                  min="0"
+                  className="bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary"
+                />
+                {errors.stock && <p className="text-sm text-destructive">{errors.stock}</p>}
+              </div>
             </div>
-          ))}
+          </div>
+
+          {/* Custom Fields Section */}
+          {sortedFields.filter(field => !['sku', 'name', 'brand', 'category', 'salePrice', 'retailPrice', 'stock'].includes(field.fieldKey)).length > 0 && (
+            <div className="bg-gradient-to-r from-accent/5 to-primary/5 p-4 rounded-lg border border-accent/20">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <div className="w-2 h-2 bg-accent rounded-full"></div>
+                Additional Product Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {sortedFields
+                  .filter(field => !['sku', 'name', 'brand', 'category', 'salePrice', 'retailPrice', 'stock'].includes(field.fieldKey))
+                  .map((field) => (
+                    <div key={field.fieldKey} className="space-y-2">
+                      <Label
+                        htmlFor={field.fieldKey}
+                        className="text-sm font-medium text-foreground"
+                      >
+                        {field.fieldLabel}
+                        {field.isRequired && <span className="text-destructive ml-1">*</span>}
+                      </Label>
+
+                      {renderField(field)}
+
+                      {field.helpText && (
+                        <p className="text-xs text-muted-foreground">{field.helpText}</p>
+                      )}
+
+                      {errors[field.fieldKey] && (
+                        <p className="text-sm text-destructive">{errors[field.fieldKey]}</p>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-6 border-t border-border">
         <Button
           type="button"
           variant="outline"
@@ -362,7 +502,14 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
           className="flex-1 bg-gradient-primary hover:shadow-glow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isLoading || sortedFields.length === 0}
         >
-          {isLoading ? "Saving..." : submitLabel}
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              Saving...
+            </div>
+          ) : (
+            submitLabel
+          )}
         </Button>
       </div>
     </form>

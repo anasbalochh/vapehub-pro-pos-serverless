@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Banknote, Package, ShoppingCart, TrendingUp, RefreshCw, Activity, Users, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { productsApi, reportsApi } from "@/lib/api";
-import { formatCurrency } from "@/lib/utils";
-import { MetricCardSkeleton, LoadingSpinner, EmptyState } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState, MetricCardSkeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
+import { reportsApi } from "@/lib/api";
+import { dynamicProductsApi } from "@/lib/multi-industry-api";
+import { formatCurrency } from "@/lib/utils";
+import { Activity, Banknote, Package, RefreshCw, ShoppingCart, TrendingUp } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 // Helper function to calculate time ago
 const getTimeAgo = (dateString: string) => {
@@ -44,7 +45,7 @@ const Dashboard = () => {
       const [summaryResponse, transactionsResponse, productsResponse] = await Promise.all([
         reportsApi.getSummary(),
         reportsApi.getTransactions(500),
-        productsApi.list(),
+        dynamicProductsApi.list(user.id),
       ]);
 
       console.log('Dashboard API responses:', {
