@@ -4,7 +4,7 @@ A modern, serverless Point of Sale (POS) system built with React, TypeScript, an
 
 ## 🚀 Vercel Deployment
 
-This project is configured for automatic deployment to Vercel at: **vapehub-pro-pos.vercel.app**
+This project is configured for automatic deployment to Vercel at: **vapehub-pro.vercel.app**
 
 ### Quick Deploy to Vercel:
 
