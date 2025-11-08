@@ -27,6 +27,7 @@ const getTimeAgo = (dateString: string) => {
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Use React Query for real-time data with proper query keys
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
@@ -99,8 +100,6 @@ const Dashboard = () => {
   ];
 
   const handleRefresh = async () => {
-    const { useQueryClient } = await import('@tanstack/react-query');
-    const queryClient = useQueryClient();
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['summary'] }),
       queryClient.invalidateQueries({ queryKey: ['transactions'] }),

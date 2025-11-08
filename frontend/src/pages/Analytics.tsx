@@ -1,12 +1,11 @@
-import { useState } from "react";
+import DateFilter from "@/components/DateFilter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Calendar, TrendingUp, Banknote, ShoppingCart, RotateCcw, Tag, Percent } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { reportsApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
-import DateFilter from "@/components/DateFilter";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/contexts/AuthContext";
+import { Banknote, Percent, RotateCcw, ShoppingCart, Tag, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
 
 const Analytics = () => {
   const { user } = useAuth();
@@ -15,7 +14,7 @@ const Analytics = () => {
   // Use React Query for real-time data
   const { data: summaryData } = useQuery({
     queryKey: ['summary', 'analytics', range],
-    queryFn: () => reportsApi.summary(range.start || range.end ? range : undefined),
+    queryFn: () => reportsApi.summary(),
     enabled: !!user?.id,
     staleTime: 1000 * 30, // 30 seconds
     select: (response) => (response as any).data || response,
@@ -39,7 +38,7 @@ const Analytics = () => {
 
   const { data: categoriesData } = useQuery({
     queryKey: ['salesByCategory', 'analytics', range],
-    queryFn: () => reportsApi.salesByCategory(range.start || range.end ? range : undefined),
+    queryFn: () => reportsApi.salesByCategory(),
     enabled: !!user?.id,
     staleTime: 1000 * 60, // 1 minute
     select: (response) => (response as any).data || response || [],
@@ -232,9 +231,11 @@ function SalesByCategory() {
     (async () => {
       try {
         const r = await reportsApi.salesByCategory();
-        setCats(r.data);
+        const data = (r as any).data || r || [];
+        setCats(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);
+        setCats([]);
       }
     })();
   }, []);
