@@ -1,7 +1,7 @@
 {
-  "buildCommand": "npm install && npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
+  "buildCommand": "if [ -d frontend ]; then cd frontend && npm install && npm run build; else npm install && npm run build; fi",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "if [ -d frontend ]; then cd frontend && npm install; else npm install; fi",
   "framework": "vite",
   "rewrites": [
     {

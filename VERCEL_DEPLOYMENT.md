@@ -57,8 +57,8 @@ The `vercel.json` in the root is configured with:
 
 After setting Root Directory and redeploying, check:
 
-- ✅ Homepage loads: `vapehub-pro-pos.vercel.app`
-- ✅ Login page works: `vapehub-pro-pos.vercel.app/login`
+- ✅ Homepage loads: `vapehub-pro.vercel.app`
+- ✅ Login page works: `vapehub-pro.vercel.app/login`
 - ✅ All routes work (no 404 errors)
 - ✅ Direct URL access works (e.g., `/dashboard`, `/products`)
 

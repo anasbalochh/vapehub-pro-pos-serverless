@@ -19,7 +19,7 @@ This project is configured for automatic deployment to Vercel at: **vapehub-pro-
 2. **Automatic Deployment:**
    - Push to `main` branch triggers automatic deployment
    - Vercel will build and deploy your app automatically
-   - Your app will be available at `vapehub-pro-pos.vercel.app`
+   - Your app will be available at `vapehub-pro.vercel.app`
 
 ### Manual Deployment:
 
@@ -66,4 +66,4 @@ npm run build
 
 ---
 
-**Live Demo:** [vapehub-pro-pos.vercel.app](https://vapehub-pro-pos.vercel.app)
+**Live Demo:** [vapehub-pro.vercel.app](https://vapehub-pro.vercel.app)
