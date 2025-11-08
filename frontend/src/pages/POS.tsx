@@ -72,13 +72,24 @@ const POS = () => {
       // Map to POS product format with custom data
       const posProducts = productsResponse.data.map((p: DynamicProduct) => {
         // Extract prices from both main fields and customData
-        const salePrice = p.salePrice || p.customData?.salePrice || 0;
-        const retailPrice = p.retailPrice || p.customData?.retailPrice;
+        // Check if salePrice exists (not null/undefined), otherwise check customData
+        const salePrice = (p.salePrice != null && p.salePrice !== '') 
+          ? p.salePrice 
+          : (p.customData?.salePrice != null && p.customData?.salePrice !== '') 
+            ? p.customData.salePrice 
+            : 0;
+        const retailPrice = (p.retailPrice != null && p.retailPrice !== '') 
+          ? p.retailPrice 
+          : (p.customData?.retailPrice != null && p.customData?.retailPrice !== '') 
+            ? p.customData.retailPrice 
+            : undefined;
+
+        const finalSalePrice = Number(salePrice) || 0;
 
         console.log(`Product ${p.name}:`, {
           mainSalePrice: p.salePrice,
           customSalePrice: p.customData?.salePrice,
-          finalSalePrice: Number(salePrice) || 0,
+          finalSalePrice: finalSalePrice,
           customData: p.customData
         });
 
@@ -88,7 +99,7 @@ const POS = () => {
           name: p.name,
           brand: p.brand,
           category: p.category,
-          salePrice: Number(salePrice) || 0,
+          salePrice: finalSalePrice,
           retailPrice: retailPrice ? Number(retailPrice) : undefined,
           stock: p.stock || 0,
           customData: p.customData || {}
@@ -214,7 +225,13 @@ const POS = () => {
     toast.success("Item removed from cart");
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + (Number(item.salePrice) || 0) * item.quantity, 0);
+  // Helper function to get the actual sale price from item (check both salePrice and customData)
+  const getItemPrice = (item: CartItem): number => {
+    const price = item.salePrice || item.customData?.salePrice || 0;
+    return Number(price) || 0;
+  };
+
+  const subtotal = cart.reduce((sum, item) => sum + getItemPrice(item) * item.quantity, 0);
 
   // Calculate discount (fixed amount only)
   const discountAmount = discountValue > 0 ? Math.min(discountValue, subtotal) : 0;
@@ -542,7 +559,7 @@ const POS = () => {
                             </TableCell>
                             <TableCell>
                               <span className="text-sm font-medium">
-                                {formatCurrency(Number(item.salePrice) || 0)}
+                                {formatCurrency(getItemPrice(item))}
                               </span>
                             </TableCell>
                             <TableCell>
@@ -570,7 +587,7 @@ const POS = () => {
                             </TableCell>
                             <TableCell>
                               <span className="font-bold text-success">
-                                {formatCurrency((Number(item.salePrice) || 0) * item.quantity)}
+                                {formatCurrency(getItemPrice(item) * item.quantity)}
                               </span>
                             </TableCell>
                             <TableCell className="text-right">

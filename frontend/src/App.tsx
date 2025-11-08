@@ -76,6 +76,9 @@ const IndustrySetup: React.FC<{ userId: string }> = ({ userId }) => {
 const AppRoutes: React.FC = () => {
   const { user } = useAuth();
 
+  // Set up real-time subscriptions when user is authenticated
+  useRealtime();
+
   if (!user?.id) {
     return <PageLoader />;
   }
@@ -83,18 +86,11 @@ const AppRoutes: React.FC = () => {
   return <IndustrySetup userId={user.id} />;
 };
 
-// Real-time subscriptions component
-const RealtimeSubscriptions: React.FC = () => {
-  useRealtime();
-  return null;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <ThemeProvider>
         <AuthProvider>
-          <RealtimeSubscriptions />
           <Toaster />
           <Sonner />
           <BrowserRouter>

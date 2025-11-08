@@ -408,23 +408,23 @@ export const db = {
             console.error('Items attempted:', JSON.stringify(validatedItems, null, 2));
             throw error;
         }
-        
+
         if (!data || data.length === 0) {
             throw new Error('Order items were inserted but no data was returned');
         }
-        
+
         return data;
     },
 
     async getOrders(userId: string, limit?: number, offset = 0) {
         try {
             let query = supabase
-                .from('orders')
-                .select(`
-            *,
-            order_items (*)
-          `)
-                .eq('user_id', userId)
+            .from('orders')
+            .select(`
+        *,
+        order_items (*)
+      `)
+            .eq('user_id', userId)
                 .order('created_at', { ascending: false });
 
             // Only apply limit if specified, otherwise get all orders
