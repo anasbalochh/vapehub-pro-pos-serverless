@@ -1,58 +1,65 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, TrendingUp, Banknote, ShoppingCart, RotateCcw, Tag, Percent } from "lucide-react";
 import { reportsApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import DateFilter from "@/components/DateFilter";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Analytics = () => {
-  const [metrics, setMetrics] = useState([
-    { title: "Total Sales", value: "₨0", change: "", icon: Banknote, color: "text-success" },
-    { title: "Total Orders", value: "0", change: "", icon: ShoppingCart, color: "text-primary" },
-    { title: "Total Returns", value: "0", change: "", icon: RotateCcw, color: "text-destructive" },
-    { title: "Net Revenue", value: "₨0", change: "", icon: Tag, color: "text-accent" },
-    { title: "Total Discounts", value: "₨0", change: "", icon: Percent, color: "text-orange-500" },
-  ]);
-
+  const { user } = useAuth();
   const [range, setRange] = useState<{ start?: string; end?: string }>({});
-  useEffect(() => {
-    (async () => {
-      try {
-        console.log('Analytics: Loading data with range:', range);
 
-        const [summary, transactions, top, byCat] = await Promise.all([
-          reportsApi.summary(range),
-          reportsApi.transactions({ limit: 200, ...range }),
-          reportsApi.topProducts(4),
-          reportsApi.salesByCategory(range),
-        ]);
+  // Use React Query for real-time data
+  const { data: summaryData } = useQuery({
+    queryKey: ['summary', 'analytics', range],
+    queryFn: () => reportsApi.summary(range.start || range.end ? range : undefined),
+    enabled: !!user?.id,
+    staleTime: 1000 * 30, // 30 seconds
+    select: (response) => (response as any).data || response,
+  });
 
-        console.log('Analytics: Summary data:', summary.data);
-        console.log('Analytics: Transactions data:', transactions.data);
+  const { data: transactionsData } = useQuery({
+    queryKey: ['transactions', 'analytics', range],
+    queryFn: () => reportsApi.transactions({ limit: 200, ...(range.start || range.end ? range : {}) }),
+    enabled: !!user?.id,
+    staleTime: 1000 * 30, // 30 seconds
+    select: (response) => (response as any).data || response || [],
+  });
 
-        const s = summary.data;
-        const ordersCount = transactions.data.length;
-        const refundsCount = transactions.data.filter((t: any) => t.type === 'Refund').length;
-        setMetrics([
-          { title: "Total Sales", value: `${formatCurrency(s.totalSales ?? 0)}`, change: "", icon: Banknote, color: "text-success" },
-          { title: "Total Orders", value: String(ordersCount), change: "", icon: ShoppingCart, color: "text-primary" },
-          { title: "Total Returns", value: String(refundsCount), change: "", icon: RotateCcw, color: "text-destructive" },
-          { title: "Net Revenue", value: `${formatCurrency(s.netRevenue ?? 0)}`, change: "", icon: Tag, color: "text-accent" },
-          { title: "Total Discounts", value: `${formatCurrency(s.totalDiscounts ?? 0)}`, change: `${s.discountPercentage ?? 0}% of orders`, icon: Percent, color: "text-orange-500" },
-        ]);
-        setTopProducts(top.data.map((p: any) => ({ name: p.name, sales: p.sales, revenue: formatCurrency(p.revenue) })));
-        setCategories(byCat.data.map((c: any) => ({ category: c.category || 'Uncategorized', percentage: 0, amount: formatCurrency(c.revenue), revenue: c.revenue })));
+  const { data: topProductsData } = useQuery({
+    queryKey: ['topProducts', 'analytics'],
+    queryFn: () => reportsApi.topProducts(4),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60, // 1 minute
+    select: (response) => (response as any).data || response || [],
+  });
 
-        console.log('Analytics: Data loaded successfully');
-      } catch (e) {
-        console.error('Analytics: Failed to load data:', e);
-      }
-    })();
-  }, [range]);
+  const { data: categoriesData } = useQuery({
+    queryKey: ['salesByCategory', 'analytics', range],
+    queryFn: () => reportsApi.salesByCategory(range.start || range.end ? range : undefined),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60, // 1 minute
+    select: (response) => (response as any).data || response || [],
+  });
 
-  const [topProducts, setTopProducts] = useState<{ name: string; sales: number; revenue: string }[]>([]);
-  const [categories, setCategories] = useState<{ category: string; percentage: number; amount: string; revenue: number }[]>([]);
+  const s = summaryData || {};
+  const transactions = transactionsData || [];
+  const ordersCount = transactions.length;
+  const refundsCount = transactions.filter((t: any) => t.type === 'Refund').length;
+
+  const metrics = [
+    { title: "Total Sales", value: `${formatCurrency(s.totalSales ?? 0)}`, change: "", icon: Banknote, color: "text-success" },
+    { title: "Total Orders", value: String(ordersCount), change: "", icon: ShoppingCart, color: "text-primary" },
+    { title: "Total Returns", value: String(refundsCount), change: "", icon: RotateCcw, color: "text-destructive" },
+    { title: "Net Revenue", value: `${formatCurrency(s.netRevenue ?? 0)}`, change: "", icon: Tag, color: "text-accent" },
+    { title: "Total Discounts", value: `${formatCurrency(s.totalDiscounts ?? 0)}`, change: `${s.discountPercentage ?? 0}% of orders`, icon: Percent, color: "text-orange-500" },
+  ];
+
+  const topProducts = (topProductsData || []).map((p: any) => ({ name: p.name, sales: p.sales, revenue: formatCurrency(p.revenue) }));
+  const categories = (categoriesData || []).map((c: any) => ({ category: c.category || 'Uncategorized', percentage: 0, amount: formatCurrency(c.revenue), revenue: c.revenue }));
 
   return (
     <div className="space-y-6 animate-fade-in">

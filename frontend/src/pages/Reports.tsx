@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -14,6 +14,8 @@ import { reportsApi } from "@/lib/api";
 import DateFilter from "@/components/DateFilter";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface OrderRow {
   _id: string;
@@ -29,36 +31,28 @@ interface OrderRow {
 }
 
 const Reports = () => {
-  const [summary, setSummary] = useState<{ totalSales: number; totalRefunds: number; netRevenue: number; counts?: any } | null>(null);
-  const [rows, setRows] = useState<OrderRow[]>([]);
+  const { user } = useAuth();
   const [range, setRange] = useState<{ start?: string; end?: string }>({});
 
-  useEffect(() => {
-    (async () => {
-      try {
-        console.log('Reports: Loading data with range:', range);
+  // Use React Query for real-time data
+  const { data: summaryData } = useQuery({
+    queryKey: ['summary', 'reports', range],
+    queryFn: () => reportsApi.summary(range.start || range.end ? range : undefined),
+    enabled: !!user?.id,
+    staleTime: 1000 * 30, // 30 seconds
+    select: (response) => (response as any).data || response,
+  });
 
-        const params = range.start || range.end ? { start: range.start, end: range.end } : undefined;
-        console.log('Reports: API params:', params);
+  const { data: transactionsData } = useQuery({
+    queryKey: ['transactions', 'reports', range],
+    queryFn: () => reportsApi.transactions({ ...(range.start || range.end ? range : {}) }),
+    enabled: !!user?.id,
+    staleTime: 1000 * 30, // 30 seconds
+    select: (response) => (response as any).data || response || [],
+  });
 
-        const [s, t] = await Promise.all([
-          reportsApi.summary(params),
-          reportsApi.transactions({ ...(params || {}) }), // No limit - fetch all orders
-        ]);
-
-        console.log('Reports: Summary data:', s.data);
-        console.log('Reports: Transactions data:', t.data);
-
-        setSummary(s.data);
-        setRows(t.data);
-
-        console.log('Reports: Data loaded successfully');
-      } catch (e) {
-        console.error('Reports: Failed to load data:', e);
-        toast.error("Failed to load reports data");
-      }
-    })();
-  }, [range]);
+  const summary = summaryData || null;
+  const rows = (transactionsData || []) as OrderRow[];
 
   const handleExport = async () => {
     try {

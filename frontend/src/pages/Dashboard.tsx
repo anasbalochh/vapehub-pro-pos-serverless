@@ -6,7 +6,7 @@ import { reportsApi } from "@/lib/api";
 import { dynamicProductsApi } from "@/lib/multi-industry-api";
 import { formatCurrency } from "@/lib/utils";
 import { Activity, Banknote, Package, RefreshCw, ShoppingCart, TrendingUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 // Helper function to calculate time ago
@@ -26,114 +26,87 @@ const getTimeAgo = (dateString: string) => {
 };
 
 const Dashboard = () => {
-  const [stats, setStats] = useState([
-    { title: "Today's Sales", value: "₨0.00", change: "", icon: Banknote, color: "text-success" },
-    { title: "Total Products", value: "0", change: "", icon: Package, color: "text-accent" },
-    { title: "Orders", value: "0", change: "", icon: ShoppingCart, color: "text-primary" },
-    { title: "Revenue", value: "₨0.00", change: "", icon: TrendingUp, color: "text-success" },
-  ]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const { user } = useAuth();
 
-  const fetchDashboardData = async () => {
-    setIsLoading(true);
-    try {
-      console.log('Fetching dashboard data...');
+  // Use React Query for real-time data with proper query keys
+  const { data: summaryData, isLoading: summaryLoading } = useQuery({
+    queryKey: ['summary', 'dashboard'],
+    queryFn: () => reportsApi.getSummary(),
+    enabled: !!user?.id,
+    staleTime: 1000 * 30, // 30 seconds
+    select: (response) => (response as any).data || response,
+  });
 
-      const [summaryResponse, transactionsResponse, productsResponse] = await Promise.all([
-        reportsApi.getSummary(),
-        reportsApi.getTransactions(), // No limit - fetch all transactions
-        dynamicProductsApi.list(user.id),
-      ]);
+  const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
+    queryKey: ['transactions', 'dashboard'],
+    queryFn: () => reportsApi.getTransactions(),
+    enabled: !!user?.id,
+    staleTime: 1000 * 30, // 30 seconds
+    select: (response) => (response as any).data || response || [],
+  });
 
-      console.log('Dashboard API responses:', {
-        summary: summaryResponse,
-        transactions: transactionsResponse,
-        products: productsResponse
-      });
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ['products', user?.id],
+    queryFn: () => dynamicProductsApi.list(user!.id),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60, // 1 minute
+    select: (response) => (response as any).data || response || [],
+  });
 
-      const summary = (summaryResponse as any).data || summaryResponse;
-      const transactions = (transactionsResponse as any).data || transactionsResponse;
-      const products = (productsResponse as any).data || productsResponse;
+  const { refetch, isRefetching } = useQuery({
+    queryKey: ['dashboard'],
+    enabled: false, // Manual refetch only
+  });
 
-      // Ensure we have arrays
-      const transactionsArray = Array.isArray(transactions) ? transactions : [];
-      const productsArray = Array.isArray(products) ? products : [];
+  const isLoading = summaryLoading || transactionsLoading || productsLoading;
 
-      console.log('Processing data:', {
-        transactionsArray: transactionsArray.length,
-        productsArray: productsArray.length,
-        summary
-      });
+  // Process data
+  const summary = summaryData || {};
+  const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+  const productsArray = Array.isArray(productsData) ? productsData : [];
 
-      const today = new Date().toISOString().slice(0, 10);
-      const todayTx = transactionsArray.filter((o: any) => {
-        const orderDate = o.created_at || o.createdAt;
-        return orderDate?.slice(0, 10) === today;
-      });
+  const today = new Date().toISOString().slice(0, 10);
+  const todayTx = transactionsArray.filter((o: any) => {
+    const orderDate = o.created_at || o.createdAt;
+    return orderDate?.slice(0, 10) === today;
+  });
 
-      console.log('Today transactions:', todayTx);
+  const todaySales = todayTx
+    .filter((o: any) => o.type === 'Sale')
+    .reduce((s: number, o: any) => s + (o.total || 0), 0);
 
-      const todaySales = todayTx
-        .filter((o: any) => o.type === 'Sale')
-        .reduce((s: number, o: any) => s + (o.total || 0), 0);
+  const ordersCount = todayTx.length;
+  const totalProducts = productsArray.length;
+  const revenue = (summary as any).netRevenue ?? 0;
 
-      const ordersCount = todayTx.length;
-      const totalProducts = productsArray.length;
-      const revenue = (summary as any).netRevenue ?? 0;
+  // Get recent activity (last 5 transactions)
+  const recentActivity = transactionsArray
+    .slice(0, 5)
+    .map((tx: any) => ({
+      id: tx.id || tx._id,
+      orderNumber: tx.order_number || tx.orderNumber,
+      type: tx.type,
+      total: tx.total,
+      createdAt: tx.created_at || tx.createdAt,
+      timeAgo: getTimeAgo(tx.created_at || tx.createdAt)
+    }));
 
-      console.log('Calculated values:', {
-        todaySales,
-        ordersCount,
-        totalProducts,
-        revenue
-      });
+  const stats = [
+    { title: "Today's Sales", value: `${formatCurrency(todaySales)}`, change: "", icon: Banknote, color: "text-success" },
+    { title: "Total Products", value: String(totalProducts), change: "", icon: Package, color: "text-accent" },
+    { title: "Orders", value: String(ordersCount), change: "", icon: ShoppingCart, color: "text-primary" },
+    { title: "Revenue", value: `${formatCurrency(revenue)}`, change: "", icon: TrendingUp, color: "text-success" },
+  ];
 
-      // Get recent activity (last 5 transactions)
-      const recentTransactions = transactionsArray
-        .slice(0, 5)
-        .map((tx: any) => ({
-          id: tx.id || tx._id,
-          orderNumber: tx.order_number || tx.orderNumber,
-          type: tx.type,
-          total: tx.total,
-          createdAt: tx.created_at || tx.createdAt,
-          timeAgo: getTimeAgo(tx.created_at || tx.createdAt)
-        }));
-
-      setStats([
-        { title: "Today's Sales", value: `${formatCurrency(todaySales)}`, change: "", icon: Banknote, color: "text-success" },
-        { title: "Total Products", value: String(totalProducts), change: "", icon: Package, color: "text-accent" },
-        { title: "Orders", value: String(ordersCount), change: "", icon: ShoppingCart, color: "text-primary" },
-        { title: "Revenue", value: `${formatCurrency(revenue)}`, change: "", icon: TrendingUp, color: "text-success" },
-      ]);
-
-      setRecentActivity(recentTransactions);
-    } catch (e) {
-      console.error('Dashboard data fetch error:', e);
-      // Set default values on error
-      setStats([
-        { title: "Today's Sales", value: "₨0.00", change: "", icon: Banknote, color: "text-success" },
-        { title: "Total Products", value: "0", change: "", icon: Package, color: "text-accent" },
-        { title: "Orders", value: "0", change: "", icon: ShoppingCart, color: "text-primary" },
-        { title: "Revenue", value: "₨0.00", change: "", icon: TrendingUp, color: "text-success" },
-      ]);
-      setRecentActivity([]);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleRefresh = async () => {
+    const { useQueryClient } = await import('@tanstack/react-query');
+    const queryClient = useQueryClient();
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['summary'] }),
+      queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+      queryClient.invalidateQueries({ queryKey: ['products'] }),
+    ]);
   };
-
-  useEffect(() => {
-    fetchDashboardData();
-
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchDashboardData, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -150,11 +123,11 @@ const Dashboard = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchDashboardData()}
-            disabled={isRefreshing}
+            onClick={handleRefresh}
+            disabled={isRefetching}
             className="flex items-center space-x-2 hover:bg-primary hover:text-primary-foreground transition-all duration-200"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
           <Link to="/pos">

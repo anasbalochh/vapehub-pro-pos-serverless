@@ -360,12 +360,59 @@ export const db = {
     },
 
     async createOrderItems(orderItems: any[]) {
+        if (!orderItems || orderItems.length === 0) {
+            throw new Error('No order items provided');
+        }
+
+        // Ensure all required fields are present and valid
+        const validatedItems = orderItems.map(item => ({
+            order_id: item.order_id,
+            product_id: item.product_id || null,
+            sku: String(item.sku || '').trim(),
+            name: String(item.name || '').trim(),
+            category: item.category ? String(item.category).trim() : null,
+            unit_price: parseFloat(item.unit_price) || 0,
+            quantity: parseInt(item.quantity) || 0,
+            line_total: parseFloat(item.line_total) || 0,
+        }));
+
+        // Validate required fields
+        for (const item of validatedItems) {
+            if (!item.order_id) {
+                throw new Error('Order ID is required for all items');
+            }
+            if (!item.sku || item.sku === '') {
+                throw new Error('SKU is required for all items');
+            }
+            if (!item.name || item.name === '') {
+                throw new Error('Product name is required for all items');
+            }
+            if (item.unit_price < 0) {
+                throw new Error('Unit price cannot be negative');
+            }
+            if (item.quantity <= 0) {
+                throw new Error('Quantity must be greater than 0');
+            }
+            if (item.line_total < 0) {
+                throw new Error('Line total cannot be negative');
+            }
+        }
+
         const { data, error } = await supabase
             .from('order_items')
-            .insert(orderItems)
+            .insert(validatedItems)
             .select();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase error creating order items:', error);
+            console.error('Items attempted:', JSON.stringify(validatedItems, null, 2));
+            throw error;
+        }
+        
+        if (!data || data.length === 0) {
+            throw new Error('Order items were inserted but no data was returned');
+        }
+        
         return data;
     },
 

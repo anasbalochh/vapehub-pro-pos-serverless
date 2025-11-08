@@ -74,6 +74,9 @@ const IndustrySetup: React.FC<{ userId: string }> = ({ userId }) => {
 // Main App Routes Component
 const AppRoutes: React.FC = () => {
   const { user } = useAuth();
+  
+  // Set up real-time subscriptions
+  useRealtime();
 
   if (!user?.id) {
     return <PageLoader />;

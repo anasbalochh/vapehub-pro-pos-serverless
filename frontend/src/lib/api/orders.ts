@@ -154,11 +154,39 @@ export const ordersApi = {
         order_id: order.id
       }));
 
+      // Validate order items before insertion
+      if (!orderItemsWithOrderId || orderItemsWithOrderId.length === 0) {
+        throw new Error('No items to save. Please add items to your cart.');
+      }
+
+      // Validate each item has required fields
+      for (const item of orderItemsWithOrderId) {
+        if (!item.order_id) {
+          throw new Error('Order ID is missing. Please try again.');
+        }
+        if (!item.sku || !item.name) {
+          throw new Error('Product information is incomplete. Please try again.');
+        }
+        if (!item.unit_price || item.unit_price < 0) {
+          throw new Error('Invalid product price. Please try again.');
+        }
+        if (!item.quantity || item.quantity <= 0) {
+          throw new Error('Invalid quantity. Please try again.');
+        }
+      }
+
       try {
-        await db.createOrderItems(orderItemsWithOrderId);
+        const createdItems = await db.createOrderItems(orderItemsWithOrderId);
+        if (!createdItems || createdItems.length === 0) {
+          throw new Error('Order items were not created. Please try again.');
+        }
+        console.log('Order items created successfully:', createdItems.length);
       } catch (itemsError: any) {
         console.error('Error creating order items:', itemsError);
-        throw new Error('Order created but items could not be saved. Please contact support.');
+        // Provide more specific error message
+        const errorMessage = itemsError?.message || itemsError?.error?.message || 'Unknown error';
+        console.error('Full error details:', JSON.stringify(itemsError, null, 2));
+        throw new Error(`Failed to save order items: ${errorMessage}. Please try again or contact support.`);
       }
 
       // Update stock levels
