@@ -5,7 +5,7 @@ import { reportsApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Banknote, Percent, RotateCcw, ShoppingCart, Tag, TrendingUp } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const Analytics = () => {
   const { user } = useAuth();

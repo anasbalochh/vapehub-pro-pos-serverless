@@ -6,7 +6,7 @@ import { reportsApi } from "@/lib/api";
 import { dynamicProductsApi } from "@/lib/multi-industry-api";
 import { formatCurrency } from "@/lib/utils";
 import { Activity, Banknote, Package, RefreshCw, ShoppingCart, TrendingUp } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 // Helper function to calculate time ago
