@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
     const { login } = useAuth();
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -25,7 +26,8 @@ const Login = () => {
         try {
             await login(formData.email, formData.password);
             toast.success("Login successful!");
-            window.location.href = "/";
+            // Use React Router navigate instead of window.location to avoid 404
+            navigate("/", { replace: true });
         } catch (error: any) {
             const errorMessage = error?.message || "Login failed. Please check your credentials.";
             toast.error(errorMessage);

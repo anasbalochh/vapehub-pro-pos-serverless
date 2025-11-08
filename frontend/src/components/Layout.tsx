@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Package, Warehouse, ShoppingCart, FileText, RotateCcw, BarChart3, LogOut, User, Printer, Sun, Moon, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import { useState } from "react";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { theme, toggleTheme, isLoading: themeLoading } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -24,9 +25,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { path: "/printer", icon: Printer, label: "Printer" },
   ];
 
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/login';
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Use React Router navigate instead of window.location to avoid 404
+      navigate('/login', { replace: true });
+    } catch (error) {
+      // Even if logout fails, navigate to login
+      navigate('/login', { replace: true });
+    }
   };
 
   const closeMobileMenu = () => {
