@@ -44,17 +44,39 @@ const Analytics = () => {
     select: (response) => (response as any).data || response || [],
   });
 
-  const s = summaryData || {};
   const transactions = transactionsData || [];
+  
+  // Calculate metrics from filtered transactions if date range is active, otherwise use summary
+  const hasDateRange = !!(range.start || range.end);
+  const sales = transactions.filter((t: any) => t.type === 'Sale');
+  const refunds = transactions.filter((t: any) => t.type === 'Refund');
+  
+  const totalSales = hasDateRange 
+    ? sales.reduce((sum: number, t: any) => sum + (t.total || 0), 0)
+    : (summaryData?.totalSales ?? 0);
+  
+  const totalRefunds = hasDateRange
+    ? refunds.reduce((sum: number, t: any) => sum + Math.abs(t.total || 0), 0)
+    : (summaryData?.totalRefunds ?? 0);
+  
+  const netRevenue = totalSales - totalRefunds;
+  
+  const totalDiscounts = hasDateRange
+    ? sales.reduce((sum: number, t: any) => sum + (t.discount_amount || t.discountAmount || 0), 0)
+    : (summaryData?.totalDiscounts ?? 0);
+  
+  const discountedOrders = sales.filter((t: any) => (t.discount_amount || t.discountAmount || 0) > 0).length;
+  const discountPercentage = sales.length > 0 ? (discountedOrders / sales.length * 100).toFixed(1) : '0';
+  
   const ordersCount = transactions.length;
-  const refundsCount = transactions.filter((t: any) => t.type === 'Refund').length;
+  const refundsCount = refunds.length;
 
   const metrics = [
-    { title: "Total Sales", value: `${formatCurrency(s.totalSales ?? 0)}`, change: "", icon: Banknote, color: "text-success" },
+    { title: "Total Sales", value: `${formatCurrency(totalSales)}`, change: "", icon: Banknote, color: "text-success" },
     { title: "Total Orders", value: String(ordersCount), change: "", icon: ShoppingCart, color: "text-primary" },
     { title: "Total Returns", value: String(refundsCount), change: "", icon: RotateCcw, color: "text-destructive" },
-    { title: "Net Revenue", value: `${formatCurrency(s.netRevenue ?? 0)}`, change: "", icon: Tag, color: "text-accent" },
-    { title: "Total Discounts", value: `${formatCurrency(s.totalDiscounts ?? 0)}`, change: `${s.discountPercentage ?? 0}% of orders`, icon: Percent, color: "text-orange-500" },
+    { title: "Net Revenue", value: `${formatCurrency(netRevenue)}`, change: "", icon: Tag, color: "text-accent" },
+    { title: "Total Discounts", value: `${formatCurrency(totalDiscounts)}`, change: `${discountPercentage}% of orders`, icon: Percent, color: "text-orange-500" },
   ];
 
   const topProducts = (topProductsData || []).map((p: any) => ({ name: p.name, sales: p.sales, revenue: formatCurrency(p.revenue) }));
