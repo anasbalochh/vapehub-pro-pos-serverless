@@ -21,6 +21,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Set a maximum timeout to ensure isLoading is always false eventually
+  useEffect(() => {
+    const maxTimeout = setTimeout(() => {
+      setIsLoading(false);
+    }, 20000); // 20 second absolute maximum
+    
+    return () => clearTimeout(maxTimeout);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -28,19 +37,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const checkAuth = async () => {
       try {
-        // Add timeout to prevent infinite loading
+        // Add timeout to prevent infinite loading (increased to 15 seconds)
         const timeoutPromise = new Promise((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error('Auth check timeout')), 10000);
+          timeoutId = setTimeout(() => reject(new Error('Auth check timeout')), 15000);
         });
 
         const sessionPromise = supabase.auth.getSession();
         
-        const { data: { session }, error } = await Promise.race([
-          sessionPromise,
-          timeoutPromise
-        ]) as any;
+        let sessionResult;
+        try {
+          sessionResult = await Promise.race([
+            sessionPromise,
+            timeoutPromise
+          ]) as any;
+        } catch (raceError: any) {
+          // Timeout occurred
+          clearTimeout(timeoutId);
+          console.warn('Auth check timeout, proceeding without session');
+          if (mounted) {
+            setIsLoading(false);
+          }
+          return;
+        }
 
         clearTimeout(timeoutId);
+        
+        const { data: { session }, error } = sessionResult;
 
         if (error || !session?.user) {
           if (mounted) {
@@ -49,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Get user details from our users table with timeout
+        // Get user details from our users table with timeout (increased to 8 seconds)
         try {
           const userQueryPromise = supabase
             .from('users')
@@ -58,14 +80,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single() as any;
 
           const userTimeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('User query timeout')), 5000);
+            setTimeout(() => reject(new Error('User query timeout')), 8000);
           });
 
-          const { data: userData } = await Promise.race([
-            userQueryPromise,
-            userTimeoutPromise
-          ]) as any;
+          let userResult;
+          try {
+            userResult = await Promise.race([
+              userQueryPromise,
+              userTimeoutPromise
+            ]) as any;
+          } catch (queryError: any) {
+            // Query timed out or failed, use fallback
+            console.warn('User query failed or timed out, using session data:', queryError?.message);
+            if (mounted && session.user) {
+              setUser({
+                id: session.user.id,
+                email: session.user.email || '',
+                username: session.user.email?.split('@')[0] || 'user',
+                role: 'user'
+              });
+            }
+            return;
+          }
 
+          const { data: userData } = userResult;
           if (mounted && userData) {
             setUser({
                 id: userData.id,
@@ -88,8 +126,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error: any) {
         console.warn('Auth check error:', error?.message || error);
-        // On error, just set loading to false
+        // On error or timeout, set loading to false and proceed
+        if (mounted) {
+          setIsLoading(false);
+        }
       } finally {
+        // Always ensure loading is false
         if (mounted) {
           setIsLoading(false);
         }
