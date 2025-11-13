@@ -120,20 +120,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
 
           if (event === 'SIGNED_IN' && session?.user) {
-        const { data: userData } = await supabase
-              .from('users')
-              .select('id, email, username, role')
-              .eq('id', session.user.id)
-              .single();
+        try {
+          const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('id, email, username, role')
+                .eq('id', session.user.id)
+                .single();
 
-        if (userData) {
+          if (userData && !userError) {
+            setUser({
+                  id: userData.id,
+                  email: userData.email,
+                  username: userData.username,
+                  role: userData.role
+            });
+          } else {
+            // Use fallback if user table query fails
+            const fallbackUsername = session.user.email?.split('@')[0] || 'user';
+            setUser({
+              id: session.user.id,
+              email: session.user.email || '',
+              username: fallbackUsername,
+              role: 'user'
+            });
+          }
+        } catch (err) {
+          // Use fallback on any error
+          const fallbackUsername = session.user.email?.split('@')[0] || 'user';
           setUser({
-                id: userData.id,
-                email: userData.email,
-                username: userData.username,
-                role: userData.role
+            id: session.user.id,
+            email: session.user.email || '',
+            username: fallbackUsername,
+            role: 'user'
           });
-            }
+        }
           } else if (event === 'SIGNED_OUT') {
             setUser(null);
           }
@@ -161,6 +181,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
     try {
+      console.log('Login: Starting authentication for', sanitizedEmail);
+      
       // Use Supabase Auth with timeout handling
       const { data, error } = await supabase.auth.signInWithPassword({
         email: sanitizedEmail,
@@ -168,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
+        console.error('Login: Auth error', error);
         // Handle network/timeout errors
         if (error.message.includes('timeout') || error.message.includes('Failed to fetch') || error.message.includes('network')) {
           throw new Error('Connection timeout. Please check your internet connection and try again.');
@@ -184,8 +207,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!data?.user) {
+        console.error('Login: No user data returned');
         throw new Error('Login failed. Please try again.');
       }
+
+      console.log('Login: Auth successful, user ID:', data.user.id);
 
         // Check if email is confirmed
         if (!data.user.email_confirmed_at) {
@@ -230,7 +256,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const { data: userData, error: userError } = await getUserData();
 
+        console.log('Login: User query result', { userData: !!userData, userError: userError?.code || userError?.message });
+
         if (userData && !userError) {
+          console.log('Login: Setting user from database');
           setUser({
             id: userData.id,
             email: userData.email,
@@ -243,6 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // If user doesn't exist or query failed, try once more immediately (no delay)
       // This handles cases where user might be created by trigger or RLS policy
       if (!userData || userError) {
+        console.log('Login: User query failed, trying retry');
         try {
           // Try again immediately without delay
           const { data: retryUserData, error: retryError } = await supabase
@@ -252,6 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single();
 
           if (retryUserData && !retryError) {
+            console.log('Login: Retry successful, setting user from database');
             setUser({
               id: retryUserData.id,
               email: retryUserData.email,
@@ -262,11 +293,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (retryErr) {
           // If retry also fails, continue to fallback
-          console.warn('Retry user query failed:', retryErr);
+          console.warn('Login: Retry user query failed:', retryErr);
         }
 
         // Always use fallback from auth data if users table query fails
         // This allows login to proceed even if users table is unavailable
+        console.log('Login: Using fallback user data');
         const fallbackUsername = data.user.email?.split('@')[0] || 'user';
         setUser({
           id: data.user.id,
@@ -274,6 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           username: fallbackUsername,
           role: 'user'
         });
+        console.log('Login: User set successfully with fallback data');
         return;
       }
     } catch (error: any) {

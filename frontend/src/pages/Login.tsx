@@ -24,11 +24,17 @@ const Login = () => {
         setIsLoading(true);
 
         try {
+            console.log('Login page: Attempting login for', formData.email);
             await login(formData.email, formData.password);
+            console.log('Login page: Login successful, navigating...');
             toast.success("Login successful!");
             // Use React Router navigate instead of window.location to avoid 404
-            navigate("/", { replace: true });
+            // Add a small delay to ensure state is updated
+            setTimeout(() => {
+                navigate("/", { replace: true });
+            }, 100);
         } catch (error: any) {
+            console.error('Login page: Login error', error);
             const errorMessage = error?.message || "Login failed. Please check your credentials.";
             toast.error(errorMessage);
         } finally {
