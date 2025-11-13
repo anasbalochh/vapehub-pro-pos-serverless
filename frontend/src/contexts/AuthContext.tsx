@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
+import { ReactNode, createContext, useContext, useEffect, useState } from 'react';
 
 interface User {
   id: string;
@@ -16,6 +16,7 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
+// Create context - using undefined as default is the standard pattern
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -29,12 +30,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       try {
         console.log('Auth: Checking existing session...');
-        
-        // Set a timeout to prevent infinite loading (8 seconds)
+
+        // Set a timeout to prevent infinite loading (15 seconds - increased for slow connections)
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = setTimeout(() => {
             reject(new Error('Auth check timeout - please check your connection'));
-          }, 8000);
+          }, 15000);
         });
 
         const sessionPromise = supabase.auth.getSession();
@@ -120,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             username: session.user.email?.split('@')[0] || 'user',
             role: 'user'
           };
-          
+
           console.log('Auth: Setting user state', { id: finalUser.id, email: finalUser.email });
           setUser(finalUser);
         }
@@ -172,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           username: session.user.email?.split('@')[0] || 'user',
           role: 'user'
         };
-        
+
         console.log('Auth: Setting user state via onAuthStateChange', { id: finalUser.id, email: finalUser.email });
         setUser(finalUser);
           } else if (event === 'SIGNED_OUT') {
@@ -211,9 +212,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password: password
       });
 
-      // Add timeout to auth call (10 seconds)
+      // Add timeout to auth call (20 seconds - increased for slow connections)
       const authTimeout = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Authentication timeout')), 10000);
+        setTimeout(() => reject(new Error('Authentication timeout')), 20000);
       });
 
       let authResult;
@@ -267,7 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .single();
 
         const queryTimeout = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Query timeout')), 2000); // 2 second timeout
+          setTimeout(() => reject(new Error('Query timeout')), 5000); // 5 second timeout
         });
 
         const queryResult = await Promise.race([userQuery, queryTimeout]);

@@ -129,7 +129,7 @@ if (config) {
     // Invalid configuration - create a dummy client that will throw helpful errors at runtime
     const dummyUrl = 'https://dummy.supabase.co';
     const dummyKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1bW15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTIwMDAsImV4cCI6MTk2MDc2ODAwMH0.dummy';
-    
+
     try {
         supabaseClient = createClient(dummyUrl, dummyKey);
     } catch (err) {
@@ -161,7 +161,7 @@ if (config) {
             return (originalAuth as any)[prop];
         }
     }) as any;
-    
+
     console.error('⚠️ Supabase client created with dummy config - all operations will fail');
 }
 
