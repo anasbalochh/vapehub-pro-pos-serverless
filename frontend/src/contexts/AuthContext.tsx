@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
+import { ReactNode, createContext, useContext, useEffect, useState } from 'react';
 
 interface User {
   id: string;
@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .from('users')
             .select('id, email, username, role')
             .eq('id', session.user.id)
-            .single();
+            .single() as any;
 
         if (mounted && userData) {
           setUser({
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .from('users')
               .select('id, email, username, role')
               .eq('id', session.user.id)
-              .single();
+              .single() as any;
 
         if (userData) {
           setUser({
@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .from('users')
           .select('id, email, username, role')
           .eq('id', data.user.id)
-          .single();
+          .single() as any;
 
         if (userData && !userError) {
         setUser({
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   .from('users')
                   .select('id, email, username, role')
                   .eq('id', data.user.id)
-                  .single();
+                  .single() as any;
 
                 if (retryUserData) {
           setUser({
@@ -214,7 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // If user created, try to create user record (will be created after email confirmation)
     if (data.user) {
       try {
-        await supabase.from('users').insert([{
+        await (supabase.from('users') as any).insert([{
           id: data.user.id,
           email: sanitizedEmail,
           username: sanitizedUsername,
