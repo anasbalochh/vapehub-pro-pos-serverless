@@ -237,108 +237,150 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ]) as any;
 
       if (error) {
+        console.error('Login: Supabase auth error:', error);
         // Handle network/timeout errors
         if (error.message.includes('timeout') || error.message.includes('Failed to fetch') || error.message.includes('network')) {
           throw new Error('Connection timeout. Please check your internet connection and try again.');
         }
-        // Handle email confirmation error
+        // Handle email confirmation error - make it a warning, not blocking
         if (error.message.includes('Email not confirmed') || error.message.includes('unconfirmed')) {
-          throw new Error('Please check your email and click the confirmation link before logging in.');
-        }
-        // Handle invalid credentials
-        if (error.message.includes('Invalid login credentials')) {
+          console.warn('Login: Email not confirmed, but allowing login');
+          // Don't throw - allow login to proceed by continuing
+          // We'll handle this after getting the user data
+        } else if (error.message.includes('Invalid login credentials') || error.message.includes('Invalid')) {
+          // Handle invalid credentials
           throw new Error('Invalid email or password.');
+        } else {
+          // For other errors, throw them
+          throw new Error(error.message || 'Login failed. Please try again.');
         }
-        throw new Error(error.message || 'Login failed. Please try again.');
       }
 
       if (!data?.user) {
         throw new Error('Login failed. Please try again.');
       }
 
-        // Check if email is confirmed
-        if (!data.user.email_confirmed_at) {
-          throw new Error('Please confirm your email before logging in. Check your email for the confirmation link.');
+      console.log('Login: Auth successful, user ID:', data.user.id);
+      console.log('Login: Email confirmed:', !!data.user.email_confirmed_at);
+
+      // Get user details from our users table - with fallback and timeout
+      let userSet = false;
+      try {
+        // Add timeout for database query (5 seconds)
+        const dbTimeout = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('Database query timeout'));
+          }, 5000);
+        });
+
+        const userQueryPromise = supabase
+          .from('users')
+          .select('id, email, username, role')
+          .eq('id', data.user.id)
+          .single() as any;
+
+        const { data: userData, error: userError } = await Promise.race([
+          userQueryPromise,
+          dbTimeout
+        ]) as any;
+
+        if (userData && !userError) {
+          console.log('Login: User found in database:', userData);
+          setUser({
+              id: userData.id,
+              email: userData.email,
+              username: userData.username,
+              role: userData.role
+          });
+          userSet = true;
+          return;
         }
 
-        // Get user details from our users table - with fallback and timeout
-        let userSet = false;
-        try {
-          // Add timeout for database query (5 seconds)
-          const dbTimeout = new Promise<never>((_, reject) => {
-            setTimeout(() => {
-              reject(new Error('Database query timeout'));
-            }, 5000);
-          });
-
-          const userQueryPromise = supabase
-            .from('users')
-            .select('id, email, username, role')
-            .eq('id', data.user.id)
-            .single() as any;
-
-          const { data: userData, error: userError } = await Promise.race([
-            userQueryPromise,
-            dbTimeout
-          ]) as any;
-
-          if (userData && !userError) {
-            setUser({
-                id: userData.id,
-                email: userData.email,
-                username: userData.username,
-                role: userData.role
-            });
-            userSet = true;
-            return;
-          }
-
-          // If user doesn't exist, try to create them (might be created by trigger)
-          if (userError?.code === 'PGRST116') {
-            // Wait a moment for trigger to create user
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            const retryTimeout = new Promise<never>((_, reject) => {
-              setTimeout(() => reject(new Error('Retry timeout')), 5000);
-            });
-
-            const retryQueryPromise = supabase
-              .from('users')
+        // If user doesn't exist, create them
+        if (userError?.code === 'PGRST116' || !userData) {
+          console.log('Login: User not found in database, creating user...');
+          
+          // Try to create user in users table
+          try {
+            const username = data.user.user_metadata?.username || data.user.email?.split('@')[0] || 'user';
+            const userInsertData = {
+              id: data.user.id,
+              email: data.user.email || sanitizedEmail,
+              username: username,
+              role: 'user',
+              is_active: true,
+              theme_preference: 'light'
+            };
+            const { data: newUserData, error: createError } = await (supabase
+              .from('users') as any)
+              .insert([userInsertData])
               .select('id, email, username, role')
-              .eq('id', data.user.id)
-              .single() as any;
+              .single();
 
-            const { data: retryUserData } = await Promise.race([
-              retryQueryPromise,
-              retryTimeout
-            ]) as any;
-
-            if (retryUserData) {
+            if (newUserData && !createError) {
+              console.log('Login: User created successfully:', newUserData);
               setUser({
-                id: retryUserData.id,
-                email: retryUserData.email,
-                username: retryUserData.username,
-                role: retryUserData.role
+                id: newUserData.id,
+                email: newUserData.email,
+                username: newUserData.username,
+                role: newUserData.role
               });
               userSet = true;
               return;
-            }
-          }
-        } catch (dbError: any) {
-          console.warn('Database query failed, using fallback:', dbError?.message);
-          // Continue to fallback
-        }
+            } else {
+              console.warn('Login: Failed to create user:', createError);
+              // If creation fails, wait a moment and retry query (in case trigger created it)
+              await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Fallback: use auth session data if database query fails
-        if (!userSet) {
-          setUser({
-            id: data.user.id,
-            email: data.user.email || sanitizedEmail,
-            username: data.user.email?.split('@')[0] || 'user',
-            role: 'user'
-          });
+              const retryTimeout = new Promise<never>((_, reject) => {
+                setTimeout(() => reject(new Error('Retry timeout')), 5000);
+              });
+
+              const retryQueryPromise = supabase
+                .from('users')
+                .select('id, email, username, role')
+                .eq('id', data.user.id)
+                .single() as any;
+
+              const { data: retryUserData } = await Promise.race([
+                retryQueryPromise,
+                retryTimeout
+              ]) as any;
+
+              if (retryUserData) {
+                console.log('Login: User found on retry:', retryUserData);
+                setUser({
+                  id: retryUserData.id,
+                  email: retryUserData.email,
+                  username: retryUserData.username,
+                  role: retryUserData.role
+                });
+                userSet = true;
+                return;
+              }
+            }
+          } catch (createErr: any) {
+            console.warn('Login: Error creating user:', createErr?.message);
+            // Continue to fallback
+          }
         }
-        return;
+      } catch (dbError: any) {
+        console.warn('Login: Database query failed, using fallback:', dbError?.message);
+        // Continue to fallback
+      }
+
+      // Fallback: use auth session data if database query fails
+      if (!userSet) {
+        console.log('Login: Using fallback user data from auth session');
+        const username = data.user.user_metadata?.username || data.user.email?.split('@')[0] || 'user';
+        setUser({
+          id: data.user.id,
+          email: data.user.email || sanitizedEmail,
+          username: username,
+          role: 'user'
+        });
+      }
+      return;
     } catch (error: any) {
       // Handle timeout errors specifically
       if (error?.message?.includes('timeout') || error?.message?.includes('Failed to fetch')) {
