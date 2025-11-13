@@ -89,66 +89,55 @@ const config = getSupabaseConfig();
 let supabaseClient: ReturnType<typeof createClient>;
 
 if (config) {
-    // Valid configuration - create normal client with standard settings
-    // Removed custom fetch handler to prevent "write after end" errors
-    try {
-        console.log('🔧 Initializing Supabase client with URL:', config.url.substring(0, 30) + '...');
-        supabaseClient = createClient(config.url, config.key, {
-            auth: {
-                autoRefreshToken: true,
-                persistSession: true,
-                detectSessionInUrl: true,
-                storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-                storageKey: 'supabase.auth.token',
-                // Disable flow type to prevent write conflicts
-                flowType: 'pkce'
-            }
-            // Removed custom fetch handler - let Supabase handle requests natively
-            // This prevents "write after end" errors
-        });
-        console.log('✅ Supabase client initialized successfully');
-    } catch (err) {
-        console.error('❌ Failed to create Supabase client:', err);
-        throw err;
-    }
+    // Valid configuration - create normal client with timeout settings
+    supabaseClient = createClient(config.url, config.key, {
+        auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: true,
+            // Handle email confirmation redirects
+            redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/confirm` : undefined,
+            // Add timeout for auth requests (30 seconds)
+            storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+            storageKey: 'supabase.auth.token'
+        },
+    });
 } else {
-    // Invalid configuration - create a dummy client that will throw helpful errors at runtime
-    const dummyUrl = 'https://dummy.supabase.co';
-    const dummyKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1bW15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTIwMDAsImV4cCI6MTk2MDc2ODAwMH0.dummy';
-
-    try {
-        supabaseClient = createClient(dummyUrl, dummyKey);
-    } catch (err) {
-        console.error('❌ Failed to create dummy Supabase client:', err);
-        throw err;
-    }
-
-    // Override methods to throw helpful errors at runtime
+    // Invalid configuration - create a proxy that throws helpful errors
     const configError = new Error(
-        'Supabase configuration is missing. Please create a .env file in the frontend directory with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then restart the development server.'
+        'Supabase configuration is missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file and restart the server.'
     );
 
-    // Wrap the client methods to throw errors with better messages
-    const originalFrom = supabaseClient.from.bind(supabaseClient);
-    supabaseClient.from = ((table: string) => {
-        console.error('❌ Supabase configuration error:', configError.message);
-        throw configError;
-    }) as any;
-
-    const originalAuth = supabaseClient.auth;
-    supabaseClient.auth = new Proxy(originalAuth, {
+    // Create a proxy object that throws errors when any method is accessed
+    supabaseClient = new Proxy({} as ReturnType<typeof createClient>, {
         get(_target, prop) {
-            if (prop === 'getSession' || prop === 'signInWithPassword' || prop === 'signUp' || prop === 'signOut' || prop === 'onAuthStateChange') {
-                return (...args: any[]) => {
-                    console.error('❌ Supabase configuration error:', configError.message);
-                    return Promise.reject(configError);
-                };
+            // Allow access to the error for debugging
+            if (prop === '__configError') {
+                return configError;
             }
-            return (originalAuth as any)[prop];
-        }
-    }) as any;
 
-    console.error('⚠️ Supabase client created with dummy config - all operations will fail');
+            // For auth property, return a proxy that throws on method calls
+            if (prop === 'auth') {
+                return new Proxy({}, {
+                    get(_target, authProp) {
+                        throw configError;
+                    }
+                });
+            }
+
+            // For from() method (database queries), return a proxy that throws
+            if (prop === 'from') {
+                return () => new Proxy({}, {
+                    get() {
+                        throw configError;
+                    }
+                });
+            }
+
+            // For any other property, throw the error
+            throw configError;
+        }
+    });
 }
 
 export const supabase = supabaseClient;
@@ -162,28 +151,18 @@ const getCurrentUser = async () => {
         throw new Error('No user found in session');
     }
 
-    // Try to get user details from our users table, but use fallback if it fails
-    try {
-        const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('id, email, username, role')
-            .eq('id', session.user.id)
-            .single();
+    // Get user details from our users table
+    const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email, username, role')
+        .eq('id', session.user.id)
+        .single();
 
-        if (userData && !userError) {
-            return userData;
-        }
-    } catch (err) {
-        console.warn('getCurrentUser: Failed to fetch from users table, using fallback', err);
+    if (userError || !userData) {
+        throw new Error('User not found in database');
     }
 
-    // Fallback: return user data from auth session
-    return {
-        id: session.user.id,
-        email: session.user.email || '',
-        username: session.user.email?.split('@')[0] || 'user',
-        role: 'user'
-    };
+    return userData;
 };
 
 // Test Supabase connection
@@ -209,7 +188,7 @@ export const db = {
     async createUser(userData: any) {
         const { data, error } = await supabase
             .from('users')
-            .insert([userData] as any)
+            .insert([userData])
             .select()
             .single();
 
@@ -289,7 +268,7 @@ export const db = {
     async createProduct(productData: any) {
         const { data, error } = await supabase
             .from('products')
-            .insert([productData] as any)
+            .insert([productData])
             .select()
             .single();
 
@@ -304,8 +283,8 @@ export const db = {
     },
 
     async updateProduct(id: string, userId: string, updateData: any) {
-        const { data, error } = await (supabase
-            .from('products') as any)
+        const { data, error } = await supabase
+            .from('products')
             .update(updateData)
             .eq('id', id)
             .eq('user_id', userId)
@@ -327,8 +306,8 @@ export const db = {
     },
 
     async updateProductStock(id: string, userId: string, newStock: number) {
-        const { data, error } = await (supabase
-            .from('products') as any)
+        const { data, error } = await supabase
+            .from('products')
             .update({ stock: newStock, updated_at: new Date().toISOString() })
             .eq('id', id)
             .eq('user_id', userId)
@@ -343,7 +322,7 @@ export const db = {
     async createOrder(orderData: any) {
         const { data, error } = await supabase
             .from('orders')
-            .insert([orderData] as any)
+            .insert([orderData])
             .select()
             .single();
 
@@ -392,7 +371,7 @@ export const db = {
 
         const { data, error } = await supabase
             .from('order_items')
-            .insert(validatedItems as any)
+            .insert(validatedItems)
             .select();
 
         if (error) {
@@ -525,15 +504,15 @@ export const db = {
     async createPrinterConfig(configData: any) {
         try {
             const user = await getCurrentUser();
-            console.log('Creating printer config for user:', (user as any).id);
+            console.log('Creating printer config for user:', user.id);
             console.log('Config data:', configData);
 
             const { data, error } = await supabase
                 .from('printer_configs')
                 .insert([{
-                    user_id: (user as any).id,
+                    user_id: user.id,
                     ...configData
-                }] as any)
+                }])
                 .select()
                 .single();
 
@@ -553,14 +532,14 @@ export const db = {
     async getPrinterConfig() {
         try {
             const user = await getCurrentUser();
-            console.log('Current user ID:', (user as any).id);
-            console.log('User ID type:', typeof (user as any).id);
+            console.log('Current user ID:', user.id);
+            console.log('User ID type:', typeof user.id);
 
             // Try a simpler query first
             const { data, error } = await supabase
                 .from('printer_configs')
                 .select('*')
-                .eq('user_id', (user as any).id);
+                .eq('user_id', user.id);
 
             console.log('Printer config query result:', { data, error });
 
@@ -571,7 +550,7 @@ export const db = {
             }
 
             // Filter for active configs in the application
-            const activeConfig = data?.find((config: any) => config.is_active === true);
+            const activeConfig = data?.find(config => config.is_active === true);
             console.log('Active config found:', activeConfig);
 
             return activeConfig || null;
@@ -583,10 +562,10 @@ export const db = {
 
     async updatePrinterConfig(configData: any) {
         const user = await getCurrentUser();
-        const { data, error } = await (supabase
-            .from('printer_configs') as any)
+        const { data, error } = await supabase
+            .from('printer_configs')
             .update(configData)
-            .eq('user_id', (user as any).id)
+            .eq('user_id', user.id)
             .eq('is_active', true)
             .select()
             .single();
@@ -597,10 +576,10 @@ export const db = {
 
     async deactivatePrinterConfig() {
         const user = await getCurrentUser();
-        const { data, error } = await (supabase
-            .from('printer_configs') as any)
+        const { data, error } = await supabase
+            .from('printer_configs')
             .update({ is_active: false })
-            .eq('user_id', (user as any).id)
+            .eq('user_id', user.id)
             .eq('is_active', true);
 
         if (error) throw error;
@@ -613,9 +592,9 @@ export const db = {
         const { data, error } = await supabase
             .from('print_jobs')
             .insert([{
-                user_id: (user as any).id,
+                user_id: user.id,
                 ...jobData
-            }] as any)
+            }])
             .select()
             .single();
 
@@ -628,7 +607,7 @@ export const db = {
         const { data, error } = await supabase
             .from('print_jobs')
             .select('*')
-            .eq('user_id', (user as any).id)
+            .eq('user_id', user.id)
             .order('created_at', { ascending: false })
             .limit(limit);
 
