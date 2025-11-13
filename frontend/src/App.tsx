@@ -12,7 +12,6 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import CheckEmail from "./pages/CheckEmail";
 import EmailConfirmation from "./pages/EmailConfirmation";
-import { useRealtime } from "@/hooks/useRealtime";
 
 // Lazy load pages for better code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -75,9 +74,6 @@ const IndustrySetup: React.FC<{ userId: string }> = ({ userId }) => {
 // Main App Routes Component
 const AppRoutes: React.FC = () => {
   const { user } = useAuth();
-
-  // Set up real-time subscriptions when user is authenticated
-  useRealtime();
 
   if (!user?.id) {
     return <PageLoader />;

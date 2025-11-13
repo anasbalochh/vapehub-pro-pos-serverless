@@ -8,6 +8,7 @@ import { formatCurrency } from "@/lib/utils";
 import { Activity, Banknote, Package, RefreshCw, ShoppingCart, TrendingUp } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 
 // Helper function to calculate time ago
 const getTimeAgo = (dateString: string) => {
@@ -54,12 +55,8 @@ const Dashboard = () => {
     select: (response) => (response as any).data || response || [],
   });
 
-  const { refetch, isRefetching } = useQuery({
-    queryKey: ['dashboard'],
-    enabled: false, // Manual refetch only
-  });
-
   const isLoading = summaryLoading || transactionsLoading || productsLoading;
+  const [isRefetching, setIsRefetching] = useState(false);
 
   // Process data
   const summary = summaryData || {};
@@ -100,11 +97,16 @@ const Dashboard = () => {
   ];
 
   const handleRefresh = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['summary'] }),
-      queryClient.invalidateQueries({ queryKey: ['transactions'] }),
-      queryClient.invalidateQueries({ queryKey: ['products'] }),
-    ]);
+    setIsRefetching(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['summary'] }),
+        queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+        queryClient.invalidateQueries({ queryKey: ['products'] }),
+      ]);
+    } finally {
+      setIsRefetching(false);
+    }
   };
 
   return (
