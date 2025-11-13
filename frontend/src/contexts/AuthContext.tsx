@@ -217,11 +217,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
     try {
+      // Add timeout wrapper for the entire login process (15 seconds max)
+      const loginTimeout = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Login request timed out. Please check your internet connection and try again.'));
+        }, 15000); // 15 second timeout
+      });
+
       // Use Supabase Auth with timeout handling
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const signInPromise = supabase.auth.signInWithPassword({
         email: sanitizedEmail,
         password: password
       });
+
+      // Race between sign in and timeout
+      const { data, error } = await Promise.race([
+        signInPromise,
+        loginTimeout
+      ]) as any;
 
       if (error) {
         // Handle network/timeout errors
@@ -248,14 +261,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error('Please confirm your email before logging in. Check your email for the confirmation link.');
         }
 
-        // Get user details from our users table - with fallback
+        // Get user details from our users table - with fallback and timeout
         let userSet = false;
         try {
-          const { data: userData, error: userError } = await supabase
+          // Add timeout for database query (5 seconds)
+          const dbTimeout = new Promise<never>((_, reject) => {
+            setTimeout(() => {
+              reject(new Error('Database query timeout'));
+            }, 5000);
+          });
+
+          const userQueryPromise = supabase
             .from('users')
             .select('id, email, username, role')
             .eq('id', data.user.id)
             .single() as any;
+
+          const { data: userData, error: userError } = await Promise.race([
+            userQueryPromise,
+            dbTimeout
+          ]) as any;
 
           if (userData && !userError) {
             setUser({
@@ -265,8 +290,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 role: userData.role
             });
             userSet = true;
-            // Wait a moment to ensure state is updated
-            await new Promise(resolve => setTimeout(resolve, 100));
             return;
           }
 
@@ -275,11 +298,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Wait a moment for trigger to create user
             await new Promise(resolve => setTimeout(resolve, 500));
 
-            const { data: retryUserData } = await supabase
+            const retryTimeout = new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error('Retry timeout')), 5000);
+            });
+
+            const retryQueryPromise = supabase
               .from('users')
               .select('id, email, username, role')
               .eq('id', data.user.id)
               .single() as any;
+
+            const { data: retryUserData } = await Promise.race([
+              retryQueryPromise,
+              retryTimeout
+            ]) as any;
 
             if (retryUserData) {
               setUser({
@@ -289,13 +321,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 role: retryUserData.role
               });
               userSet = true;
-              // Wait a moment to ensure state is updated
-              await new Promise(resolve => setTimeout(resolve, 100));
               return;
             }
           }
         } catch (dbError: any) {
           console.warn('Database query failed, using fallback:', dbError?.message);
+          // Continue to fallback
         }
 
         // Fallback: use auth session data if database query fails
@@ -306,8 +337,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             username: data.user.email?.split('@')[0] || 'user',
             role: 'user'
           });
-          // Wait a moment to ensure state is updated
-          await new Promise(resolve => setTimeout(resolve, 100));
         }
         return;
     } catch (error: any) {

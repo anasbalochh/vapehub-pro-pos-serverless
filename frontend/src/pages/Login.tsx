@@ -23,9 +23,16 @@ const Login = () => {
         e.preventDefault();
         setIsLoading(true);
 
+        // Add a safety timeout to prevent infinite loading
+        const safetyTimeout = setTimeout(() => {
+            setIsLoading(false);
+            toast.error("Login is taking too long. Please check your connection and try again.");
+        }, 20000); // 20 second safety timeout
+
         try {
             console.log('Login page: Attempting login for', formData.email);
             await login(formData.email, formData.password);
+            clearTimeout(safetyTimeout);
             console.log('Login page: Login successful, navigating...');
             toast.success("Login successful!");
             // Use React Router navigate - login function already waits for state update
@@ -34,22 +41,32 @@ const Login = () => {
                 navigate("/", { replace: true });
             }, 200);
         } catch (error: any) {
+            clearTimeout(safetyTimeout);
             console.error('Login page: Login error', error);
             let errorMessage = error?.message || "Login failed. Please check your credentials.";
 
-            // Handle multi-line error messages - show first line in toast, log full message
-            if (errorMessage.includes('\n')) {
-                const firstLine = errorMessage.split('\n')[0];
-                toast.error(firstLine, {
-                    description: errorMessage.split('\n').slice(1).join(' '),
-                    duration: 8000, // Show longer for important errors
+            // Handle timeout errors specifically
+            if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+                toast.error("Connection timeout", {
+                    description: "Please check your internet connection and try again.",
+                    duration: 8000,
                 });
             } else {
-                toast.error(errorMessage, {
-                    duration: 5000,
-                });
+                // Handle multi-line error messages - show first line in toast, log full message
+                if (errorMessage.includes('\n')) {
+                    const firstLine = errorMessage.split('\n')[0];
+                    toast.error(firstLine, {
+                        description: errorMessage.split('\n').slice(1).join(' '),
+                        duration: 8000, // Show longer for important errors
+                    });
+                } else {
+                    toast.error(errorMessage, {
+                        duration: 5000,
+                    });
+                }
             }
         } finally {
+            clearTimeout(safetyTimeout);
             setIsLoading(false);
         }
     };
