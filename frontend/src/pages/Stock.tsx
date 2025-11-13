@@ -56,10 +56,17 @@ const Stock = () => {
     } catch (error: any) {
       console.error('Failed to load stock data:', error);
 
-      if (error.message?.includes('User not authenticated')) {
+      // Check if it's a database/permission error
+      if (error.message?.includes('permission') ||
+          error.message?.includes('relation') ||
+          error.message?.includes('does not exist') ||
+          error.message?.includes('COMPLETE_DATABASE_FIX.sql') ||
+          error.status === 400) {
+        toast.error('Database setup required. Please run the COMPLETE_DATABASE_FIX.sql script in Supabase SQL Editor.');
+      } else if (error.message?.includes('User not authenticated')) {
         toast.error('Session expired. Please login again.');
       } else {
-        toast.error('Failed to load stock data');
+        toast.error('Failed to load stock data. Please check your connection.');
       }
 
       setProducts([]);
@@ -70,8 +77,10 @@ const Stock = () => {
   }, [user?.id, debouncedSearchTerm]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (user?.id) {
+      loadData();
+    }
+  }, [user?.id, loadData]);
 
   // Get visible fields for table display - same logic as Products page
   const visibleFields = useMemo(() => {
@@ -140,13 +149,11 @@ const Stock = () => {
     try {
       await dynamicProductsApi.update(id, updateData);
       
-      // Update UI immediately
-      setProducts(prev => prev.map(p =>
-        p.id === id ? { ...p, stock: newStock } : p
-      ));
+      // Reload data to ensure we have the latest from the database
+      await loadData();
       
-      // Clear the input for this product
-      setStockInputs(prev => {
+      // Clear the adjustment input for this product
+      setStockAdjustments(prev => {
         const updated = { ...prev };
         delete updated[id];
         return updated;
@@ -159,6 +166,31 @@ const Stock = () => {
     }
   };
 
+  const handleStockAdjustment = (id: string, value: string) => {
+    // Only allow numbers (including negative for decrease)
+    if (value === '' || /^-?\d*$/.test(value)) {
+      setStockAdjustments(prev => ({
+        ...prev,
+        [id]: value
+      }));
+    }
+  };
+
+  const applyStockAdjustment = (id: string) => {
+    const adjustmentValue = stockAdjustments[id];
+    if (!adjustmentValue || adjustmentValue === '') {
+      toast.error('Please enter a quantity');
+      return;
+    }
+    
+    const delta = parseInt(adjustmentValue, 10);
+    if (isNaN(delta) || delta === 0) {
+      toast.error('Please enter a valid non-zero number');
+      return;
+    }
+    
+    updateQuantity(id, delta);
+  };
 
   const getStockStatus = (quantity: number) => {
     if (quantity === 0) return { text: "Out of Stock", color: "text-destructive" };
@@ -166,12 +198,11 @@ const Stock = () => {
     return { text: "In Stock", color: "text-success" };
   };
 
-  const getFieldValue = (product: DynamicProduct, field: ProductFieldConfig) => {
+  const getFieldValue = (product: DynamicProduct, fieldKey: string) => {
     // Get the value from customData or direct product property
-    const value = product.customData?.[field.fieldKey] !== undefined
-      ? product.customData[field.fieldKey]
-      : product[field.fieldKey];
-    return value;
+    return product.customData?.[fieldKey] !== undefined
+      ? product.customData[fieldKey]
+      : product[fieldKey];
   };
 
   return (
