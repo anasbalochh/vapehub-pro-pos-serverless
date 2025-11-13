@@ -28,11 +28,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const checkAuth = async () => {
       try {
-        // Set a timeout to prevent infinite loading (10 seconds)
+        console.log('Auth: Checking existing session...');
+        
+        // Set a timeout to prevent infinite loading (8 seconds)
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = setTimeout(() => {
             reject(new Error('Auth check timeout - please check your connection'));
-          }, 10000);
+          }, 8000);
         });
 
         const sessionPromise = supabase.auth.getSession();
@@ -46,7 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (raceError: any) {
           // Timeout or other error
           if (timeoutId) clearTimeout(timeoutId);
-          console.warn('Session check failed:', raceError?.message || 'Unknown error');
+          const errorMsg = raceError?.message || 'Unknown error';
+          console.warn('Auth: Session check failed:', errorMsg);
           if (mounted) {
             setIsLoading(false);
           }
@@ -60,14 +63,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const { data: { session }, error } = sessionResult as any;
 
-        if (error || !session?.user) {
+        if (error) {
+          console.warn('Auth: Session error:', error.message || error);
           if (mounted) {
             setIsLoading(false);
           }
           return;
         }
 
+        if (!session?.user) {
+          console.log('Auth: No active session found');
+          if (mounted) {
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        console.log('Auth: Session found, user ID:', session.user.id);
+
         // Get user details from our users table with timeout
+        let userData = null;
         try {
           const userDataPromise = supabase
             .from('users')
@@ -76,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single();
 
           const userTimeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('User query timeout')), 5000);
+            setTimeout(() => reject(new Error('User query timeout')), 3000); // Reduced to 3 seconds
           });
 
           const userResult = await Promise.race([
@@ -84,27 +99,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             userTimeoutPromise
           ]);
 
-          const { data: userData } = userResult as any;
+          const { data: dbUser, error: userError } = userResult as any;
 
-          if (mounted && userData) {
-            setUser({
-              id: userData.id,
-              email: userData.email,
-              username: userData.username,
-              role: userData.role
-            });
+          if (dbUser && !userError) {
+            userData = dbUser;
+            console.log('Auth: User found in database');
+          } else {
+            console.warn('Auth: User query returned error:', userError?.code || userError?.message || 'Unknown error');
           }
         } catch (userError: any) {
-          // If user table query fails, still set loading to false
-          console.warn('Failed to fetch user data:', userError?.message || 'Unknown error');
-          // Continue - user might not exist in users table yet
+          // If user table query fails, use fallback
+          console.warn('Auth: Failed to fetch user data, using fallback:', userError?.message || 'Unknown error');
+        }
+
+        // Always set user - use database data if available, otherwise use fallback
+        if (mounted) {
+          const finalUser = userData || {
+            id: session.user.id,
+            email: session.user.email || '',
+            username: session.user.email?.split('@')[0] || 'user',
+            role: 'user'
+          };
+          
+          console.log('Auth: Setting user state', { id: finalUser.id, email: finalUser.email });
+          setUser(finalUser);
         }
       } catch (error: any) {
         // Handle any other errors
-        console.warn('Auth check failed:', error?.message || 'Unknown error');
+        console.error('Auth: Auth check failed:', error?.message || 'Unknown error', error);
       } finally {
         // Always set loading to false, even on errors
         if (mounted) {
+          console.log('Auth: Setting isLoading to false');
           setIsLoading(false);
         }
         if (timeoutId) {
@@ -120,41 +146,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
 
           if (event === 'SIGNED_IN' && session?.user) {
+        console.log('Auth: SIGNED_IN event, user ID:', session.user.id);
+        let userData = null;
         try {
-          const { data: userData, error: userError } = await supabase
+          const { data: dbUser, error: userError } = await supabase
                 .from('users')
                 .select('id, email, username, role')
                 .eq('id', session.user.id)
                 .single();
 
-          if (userData && !userError) {
-            setUser({
-                  id: userData.id,
-                  email: userData.email,
-                  username: userData.username,
-                  role: userData.role
-            });
+          if (dbUser && !userError) {
+            userData = dbUser;
+            console.log('Auth: User found in database via onAuthStateChange');
           } else {
-            // Use fallback if user table query fails
-            const fallbackUsername = session.user.email?.split('@')[0] || 'user';
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
-              username: fallbackUsername,
-              role: 'user'
-            });
+            console.warn('Auth: User query returned error:', userError?.code || userError?.message || 'Unknown error');
           }
-        } catch (err) {
-          // Use fallback on any error
-          const fallbackUsername = session.user.email?.split('@')[0] || 'user';
-          setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-            username: fallbackUsername,
-            role: 'user'
-          });
+        } catch (err: any) {
+          console.warn('Auth: Failed to fetch user data in onAuthStateChange, using fallback:', err?.message || 'Unknown error');
         }
+
+        // Always set user - use database data if available, otherwise use fallback
+        const finalUser = userData || {
+          id: session.user.id,
+          email: session.user.email || '',
+          username: session.user.email?.split('@')[0] || 'user',
+          role: 'user'
+        };
+        
+        console.log('Auth: Setting user state via onAuthStateChange', { id: finalUser.id, email: finalUser.email });
+        setUser(finalUser);
           } else if (event === 'SIGNED_OUT') {
+            console.log('Auth: SIGNED_OUT event');
             setUser(null);
           }
         });
@@ -182,7 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       console.log('Login: Starting authentication for', sanitizedEmail);
-      
+
       // Use Supabase Auth with timeout handling
       const authPromise = supabase.auth.signInWithPassword({
         email: sanitizedEmail,
@@ -250,7 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const queryResult = await Promise.race([userQuery, queryTimeout]);
         const { data: dbUser, error: dbError } = queryResult as any;
-        
+
         if (dbUser && !dbError) {
           userData = dbUser;
           console.log('Login: Found user in database');
@@ -312,16 +334,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // If user created, try to create user record (will be created after email confirmation)
     if (data.user) {
       try {
-        await supabase.from('users').insert([{
+        const { error: insertError } = await supabase.from('users').insert([{
           id: data.user.id,
           email: sanitizedEmail,
           username: sanitizedUsername,
           role: 'user',
           is_active: true,
           theme_preference: 'light'
-        }]);
-      } catch {
-        // User will be created after email confirmation
+        }] as any);
+
+        if (insertError) {
+          // User might already exist or RLS policy prevents insertion
+          // This is okay - user will be created after email confirmation or by trigger
+          console.warn('Could not create user record during signup (this is normal):', insertError.message);
+        }
+      } catch (err) {
+        // User will be created after email confirmation or by database trigger
+        console.warn('User record creation failed during signup (this is normal):', err);
       }
     }
   };

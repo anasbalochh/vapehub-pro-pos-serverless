@@ -90,31 +90,62 @@ let supabaseClient: ReturnType<typeof createClient>;
 
 if (config) {
     // Valid configuration - create normal client with timeout settings
-    supabaseClient = createClient(config.url, config.key, {
-        auth: {
-            autoRefreshToken: true,
-            persistSession: true,
-            detectSessionInUrl: true,
-            storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-            storageKey: 'supabase.auth.token'
-        },
-    });
+    try {
+        supabaseClient = createClient(config.url, config.key, {
+            auth: {
+                autoRefreshToken: true,
+                persistSession: true,
+                detectSessionInUrl: true,
+                storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+                storageKey: 'supabase.auth.token'
+            },
+            global: {
+                fetch: (url, options = {}) => {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+                    return fetch(url, {
+                        ...options,
+                        signal: controller.signal
+                    }).then(response => {
+                        clearTimeout(timeoutId);
+                        return response;
+                    }).catch(error => {
+                        clearTimeout(timeoutId);
+                        if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+                            throw new Error('Connection timeout. Please check your internet connection and try again.');
+                        }
+                        throw error;
+                    });
+                }
+            }
+        });
+        console.log('✅ Supabase client initialized successfully');
+    } catch (err) {
+        console.error('❌ Failed to create Supabase client:', err);
+        throw err;
+    }
 } else {
-    // Invalid configuration - create a dummy client that will throw at runtime
-    // Use a minimal valid config to create a client, but it will fail on actual use
-    // This ensures TypeScript types are correct
+    // Invalid configuration - create a dummy client that will throw helpful errors at runtime
     const dummyUrl = 'https://dummy.supabase.co';
     const dummyKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1bW15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTIwMDAsImV4cCI6MTk2MDc2ODAwMH0.dummy';
-    supabaseClient = createClient(dummyUrl, dummyKey);
+    
+    try {
+        supabaseClient = createClient(dummyUrl, dummyKey);
+    } catch (err) {
+        console.error('❌ Failed to create dummy Supabase client:', err);
+        throw err;
+    }
 
     // Override methods to throw helpful errors at runtime
     const configError = new Error(
-        'Supabase configuration is missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file and restart the server.'
+        'Supabase configuration is missing. Please create a .env file in the frontend directory with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then restart the development server.'
     );
 
-    // Wrap the client methods to throw errors
+    // Wrap the client methods to throw errors with better messages
     const originalFrom = supabaseClient.from.bind(supabaseClient);
     supabaseClient.from = ((table: string) => {
+        console.error('❌ Supabase configuration error:', configError.message);
         throw configError;
     }) as any;
 
@@ -122,11 +153,16 @@ if (config) {
     supabaseClient.auth = new Proxy(originalAuth, {
         get(_target, prop) {
             if (prop === 'getSession' || prop === 'signInWithPassword' || prop === 'signUp' || prop === 'signOut' || prop === 'onAuthStateChange') {
-                return () => Promise.reject(configError);
+                return (...args: any[]) => {
+                    console.error('❌ Supabase configuration error:', configError.message);
+                    return Promise.reject(configError);
+                };
             }
             return (originalAuth as any)[prop];
         }
     }) as any;
+    
+    console.error('⚠️ Supabase client created with dummy config - all operations will fail');
 }
 
 export const supabase = supabaseClient;
@@ -140,18 +176,28 @@ const getCurrentUser = async () => {
         throw new Error('No user found in session');
     }
 
-    // Get user details from our users table
-    const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, email, username, role')
-        .eq('id', session.user.id)
-        .single();
+    // Try to get user details from our users table, but use fallback if it fails
+    try {
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('id, email, username, role')
+            .eq('id', session.user.id)
+            .single();
 
-    if (userError || !userData) {
-        throw new Error('User not found in database');
+        if (userData && !userError) {
+            return userData;
+        }
+    } catch (err) {
+        console.warn('getCurrentUser: Failed to fetch from users table, using fallback', err);
     }
 
-    return userData;
+    // Fallback: return user data from auth session
+    return {
+        id: session.user.id,
+        email: session.user.email || '',
+        username: session.user.email?.split('@')[0] || 'user',
+        role: 'user'
+    };
 };
 
 // Test Supabase connection
