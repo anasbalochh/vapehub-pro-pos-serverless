@@ -24,36 +24,91 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout | null = null;
 
     const checkAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Set a timeout to prevent infinite loading (10 seconds)
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error('Auth check timeout - please check your connection'));
+          }, 10000);
+        });
 
-        if (error || !session?.user) {
-          setIsLoading(false);
+        const sessionPromise = supabase.auth.getSession();
+        
+        let sessionResult;
+        try {
+          sessionResult = await Promise.race([
+            sessionPromise,
+            timeoutPromise
+          ]);
+        } catch (raceError: any) {
+          // Timeout or other error
+          if (timeoutId) clearTimeout(timeoutId);
+          console.warn('Session check failed:', raceError?.message || 'Unknown error');
+          if (mounted) {
+            setIsLoading(false);
+          }
           return;
         }
 
-        // Get user details from our users table
-        const { data: userData } = await supabase
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+
+        const { data: { session }, error } = sessionResult as any;
+
+        if (error || !session?.user) {
+          if (mounted) {
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        // Get user details from our users table with timeout
+        try {
+          const userDataPromise = supabase
             .from('users')
             .select('id, email, username, role')
             .eq('id', session.user.id)
             .single();
 
-        if (mounted && userData) {
-          setUser({
+          const userTimeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('User query timeout')), 5000);
+          });
+
+          const userResult = await Promise.race([
+            userDataPromise,
+            userTimeoutPromise
+          ]);
+
+          const { data: userData } = userResult as any;
+
+          if (mounted && userData) {
+            setUser({
               id: userData.id,
               email: userData.email,
               username: userData.username,
               role: userData.role
-          });
+            });
+          }
+        } catch (userError: any) {
+          // If user table query fails, still set loading to false
+          console.warn('Failed to fetch user data:', userError?.message || 'Unknown error');
+          // Continue - user might not exist in users table yet
         }
-      } catch (error) {
-        // Silently handle errors
+      } catch (error: any) {
+        // Handle any other errors
+        console.warn('Auth check failed:', error?.message || 'Unknown error');
       } finally {
+        // Always set loading to false, even on errors
         if (mounted) {
-        setIsLoading(false);
+          setIsLoading(false);
+        }
+        if (timeoutId) {
+          clearTimeout(timeoutId);
         }
       }
     };
@@ -86,6 +141,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       subscription.unsubscribe();
     };
   }, []);

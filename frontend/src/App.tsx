@@ -73,10 +73,16 @@ const IndustrySetup: React.FC<{ userId: string }> = ({ userId }) => {
 
 // Main App Routes Component
 const AppRoutes: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  if (!user?.id) {
+  // Show loader only while checking auth
+  if (isLoading) {
     return <PageLoader />;
+  }
+
+  // If no user after loading, ProtectedRoute will handle redirect
+  if (!user?.id) {
+    return null; // ProtectedRoute will redirect to login
   }
 
   return <IndustrySetup userId={user.id} />;
