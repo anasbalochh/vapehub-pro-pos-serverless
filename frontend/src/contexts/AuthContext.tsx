@@ -123,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Don't block SIGNED_IN/SIGNED_OUT events - they need to set user state
       // Only prevent concurrent database queries, not state updates
       const shouldLock = event !== 'SIGNED_IN' && event !== 'SIGNED_OUT';
-      
+
       if (shouldLock && authLockRef.current) {
         console.log('Auth: Operation in progress, skipping onAuthStateChange for', event);
         return;
@@ -204,7 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Wait a bit for previous operation
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
+
     authLockRef.current = true;
 
     try {
@@ -298,7 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       console.log('Login: Setting user', { id: finalUser.id, email: finalUser.email });
-      
+
       // Release lock before setting user to ensure state update works
       authLockRef.current = false;
       setUser(finalUser);
