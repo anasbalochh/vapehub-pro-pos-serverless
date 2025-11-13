@@ -22,7 +22,7 @@ const Stock = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [stockInputs, setStockInputs] = useState<Record<string, string>>({});
+  const [stockAdjustments, setStockAdjustments] = useState<Record<string, string>>({});
   const { user } = useAuth();
 
   // Debounce search term for better performance
