@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { ReactNode, createContext, useContext, useEffect, useState, useRef } from 'react';
+import { ReactNode, createContext, useContext, useEffect, useRef, useState } from 'react';
 
 interface User {
   id: string;
@@ -22,7 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Lock to prevent concurrent auth operations - use ref to persist across renders
   const authLockRef = useRef(false);
   const isInitialCheckRef = useRef(true);
@@ -36,9 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Auth: Operation already in progress, skipping...');
         return;
       }
-      
+
       authLockRef.current = true;
-      
+
       try {
         console.log('Auth: Checking existing session...');
 
@@ -113,20 +113,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Listen for auth changes - but skip if it's the initial check to avoid race conditions
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      
+
       // Skip initial TOKEN_REFRESHED event to avoid race with checkAuth
       if (isInitialCheckRef.current && event === 'TOKEN_REFRESHED') {
         console.log('Auth: Skipping initial TOKEN_REFRESHED event');
         return;
       }
+
+      // Don't block SIGNED_IN/SIGNED_OUT events - they need to set user state
+      // Only prevent concurrent database queries, not state updates
+      const shouldLock = event !== 'SIGNED_IN' && event !== 'SIGNED_OUT';
       
-      // Prevent concurrent operations
-      if (authLockRef.current) {
-        console.log('Auth: Operation in progress, skipping onAuthStateChange');
+      if (shouldLock && authLockRef.current) {
+        console.log('Auth: Operation in progress, skipping onAuthStateChange for', event);
         return;
       }
-      
-      authLockRef.current = true;
+
+      if (shouldLock) {
+        authLockRef.current = true;
+      }
 
       try {
         if (event === 'SIGNED_IN' && session?.user) {
@@ -168,7 +173,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } finally {
-        authLockRef.current = false;
+        if (shouldLock) {
+          authLockRef.current = false;
+        }
         isInitialCheckRef.current = false;
       }
         });
@@ -190,6 +197,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
         throw new Error('Invalid email format.');
       }
+
+    // Acquire lock for login operation
+    if (authLockRef.current) {
+      console.log('Login: Waiting for previous operation to complete...');
+      // Wait a bit for previous operation
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    authLockRef.current = true;
 
     try {
       console.log('Login: Starting authentication for', sanitizedEmail);
@@ -282,6 +298,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       console.log('Login: Setting user', { id: finalUser.id, email: finalUser.email });
+      
+      // Release lock before setting user to ensure state update works
+      authLockRef.current = false;
       setUser(finalUser);
       console.log('Login: User set successfully, login complete');
       return;
@@ -303,6 +322,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Re-throw the error as-is if it's already an Error
       throw error instanceof Error ? error : new Error('Login failed. Please try again.');
+    } finally {
+      // Always release lock
+      authLockRef.current = false;
     }
   };
 
