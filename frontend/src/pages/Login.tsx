@@ -35,8 +35,20 @@ const Login = () => {
             }, 100);
         } catch (error: any) {
             console.error('Login page: Login error', error);
-            const errorMessage = error?.message || "Login failed. Please check your credentials.";
-            toast.error(errorMessage);
+            let errorMessage = error?.message || "Login failed. Please check your credentials.";
+            
+            // Handle multi-line error messages - show first line in toast, log full message
+            if (errorMessage.includes('\n')) {
+                const firstLine = errorMessage.split('\n')[0];
+                toast.error(firstLine, {
+                    description: errorMessage.split('\n').slice(1).join(' '),
+                    duration: 8000, // Show longer for important errors
+                });
+            } else {
+                toast.error(errorMessage, {
+                    duration: 5000,
+                });
+            }
         } finally {
             setIsLoading(false);
         }

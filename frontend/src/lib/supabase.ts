@@ -91,6 +91,7 @@ let supabaseClient: ReturnType<typeof createClient>;
 if (config) {
     // Valid configuration - create normal client with timeout settings
     try {
+        console.log('🔧 Initializing Supabase client with URL:', config.url.substring(0, 30) + '...');
         supabaseClient = createClient(config.url, config.key, {
             auth: {
                 autoRefreshToken: true,
@@ -102,19 +103,25 @@ if (config) {
             global: {
                 fetch: (url, options = {}) => {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+                    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout - increased for slow connections
 
                     return fetch(url, {
                         ...options,
                         signal: controller.signal
                     }).then(response => {
                         clearTimeout(timeoutId);
+                        if (!response.ok) {
+                            console.error('❌ Supabase fetch error:', response.status, response.statusText, url);
+                        }
                         return response;
                     }).catch(error => {
                         clearTimeout(timeoutId);
                         if (error.name === 'AbortError' || error.name === 'TimeoutError') {
-                            throw new Error('Connection timeout. Please check your internet connection and try again.');
+                            const timeoutError = new Error(`Connection timeout after 60 seconds. URL: ${url}. Please check your Supabase configuration and internet connection.`);
+                            console.error('❌', timeoutError.message);
+                            throw timeoutError;
                         }
+                        console.error('❌ Supabase fetch error:', error.message, url);
                         throw error;
                     });
                 }
