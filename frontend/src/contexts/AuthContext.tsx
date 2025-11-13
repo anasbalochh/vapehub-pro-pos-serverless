@@ -184,23 +184,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('Login: Starting authentication for', sanitizedEmail);
       
       // Use Supabase Auth with timeout handling
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const authPromise = supabase.auth.signInWithPassword({
         email: sanitizedEmail,
         password: password
       });
 
+      // Add timeout to auth call (10 seconds)
+      const authTimeout = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Authentication timeout')), 10000);
+      });
+
+      let authResult;
+      try {
+        authResult = await Promise.race([authPromise, authTimeout]);
+      } catch (raceErr: any) {
+        if (raceErr?.message?.includes('timeout')) {
+          throw new Error('Connection timeout. Please check your internet connection and try again.');
+        }
+        throw raceErr;
+      }
+
+      const { data, error } = authResult as any;
+
       if (error) {
         console.error('Login: Auth error', error);
         // Handle network/timeout errors
-        if (error.message.includes('timeout') || error.message.includes('Failed to fetch') || error.message.includes('network')) {
+        if (error.message?.includes('timeout') || error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
           throw new Error('Connection timeout. Please check your internet connection and try again.');
         }
         // Handle email confirmation error
-        if (error.message.includes('Email not confirmed') || error.message.includes('unconfirmed')) {
+        if (error.message?.includes('Email not confirmed') || error.message?.includes('unconfirmed')) {
           throw new Error('Please check your email and click the confirmation link before logging in.');
         }
         // Handle invalid credentials
-        if (error.message.includes('Invalid login credentials')) {
+        if (error.message?.includes('Invalid login credentials')) {
           throw new Error('Invalid email or password.');
         }
         throw new Error(error.message || 'Login failed. Please try again.');
@@ -213,103 +230,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Login: Auth successful, user ID:', data.user.id);
 
-        // Check if email is confirmed
-        if (!data.user.email_confirmed_at) {
-          throw new Error('Please confirm your email before logging in. Check your email for the confirmation link.');
-        }
-
-        // Get user details from our users table with timeout (3 seconds max)
-        const getUserData = async (): Promise<any> => {
-          let timeoutId: NodeJS.Timeout;
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error('User query timeout')), 3000);
-          });
-
-          const userQueryPromise = supabase
-            .from('users')
-            .select('id, email, username, role')
-            .eq('id', data.user.id)
-            .single();
-
-          try {
-            const result = await Promise.race([userQueryPromise, timeoutPromise]);
-            clearTimeout(timeoutId);
-            // Check if result has error property (Supabase query result structure)
-            if (result && typeof result === 'object' && 'error' in result) {
-              return result;
-            }
-            // If no error, return the result
-            return result;
-          } catch (raceError: any) {
-            clearTimeout(timeoutId);
-            if (raceError?.message?.includes('timeout')) {
-              // If timeout, return error to use fallback
-              return { data: null, error: { code: 'TIMEOUT', message: 'User query timeout' } };
-            }
-            // Return the actual error from the query in Supabase format
-            if (raceError && typeof raceError === 'object' && 'error' in raceError) {
-              return raceError;
-            }
-            return { data: null, error: raceError || { code: 'UNKNOWN', message: 'Unknown error' } };
-          }
-        };
-
-        const { data: userData, error: userError } = await getUserData();
-
-        console.log('Login: User query result', { userData: !!userData, userError: userError?.code || userError?.message });
-
-        if (userData && !userError) {
-          console.log('Login: Setting user from database');
-          setUser({
-            id: userData.id,
-            email: userData.email,
-            username: userData.username,
-            role: userData.role
-          });
-          return;
-        }
-
-      // If user doesn't exist or query failed, try once more immediately (no delay)
-      // This handles cases where user might be created by trigger or RLS policy
-      if (!userData || userError) {
-        console.log('Login: User query failed, trying retry');
-        try {
-          // Try again immediately without delay
-          const { data: retryUserData, error: retryError } = await supabase
-            .from('users')
-            .select('id, email, username, role')
-            .eq('id', data.user.id)
-            .single();
-
-          if (retryUserData && !retryError) {
-            console.log('Login: Retry successful, setting user from database');
-            setUser({
-              id: retryUserData.id,
-              email: retryUserData.email,
-              username: retryUserData.username,
-              role: retryUserData.role
-            });
-            return;
-          }
-        } catch (retryErr) {
-          // If retry also fails, continue to fallback
-          console.warn('Login: Retry user query failed:', retryErr);
-        }
-
-        // Always use fallback from auth data if users table query fails
-        // This allows login to proceed even if users table is unavailable
-        console.log('Login: Using fallback user data');
-        const fallbackUsername = data.user.email?.split('@')[0] || 'user';
-        setUser({
-          id: data.user.id,
-          email: data.user.email || sanitizedEmail,
-          username: fallbackUsername,
-          role: 'user'
-        });
-        console.log('Login: User set successfully with fallback data');
-        return;
+      // Check if email is confirmed
+      if (!data.user.email_confirmed_at) {
+        throw new Error('Please confirm your email before logging in. Check your email for the confirmation link.');
       }
+
+      // Try to get user from database, but don't wait too long
+      let userData = null;
+      try {
+        const userQuery = supabase
+          .from('users')
+          .select('id, email, username, role')
+          .eq('id', data.user.id)
+          .single();
+
+        const queryTimeout = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Query timeout')), 2000); // 2 second timeout
+        });
+
+        const queryResult = await Promise.race([userQuery, queryTimeout]);
+        const { data: dbUser, error: dbError } = queryResult as any;
+        
+        if (dbUser && !dbError) {
+          userData = dbUser;
+          console.log('Login: Found user in database');
+        }
+      } catch (queryErr: any) {
+        console.warn('Login: User query failed or timed out, using fallback', queryErr?.message);
+      }
+
+      // Set user - use database data if available, otherwise use fallback
+      const finalUser = userData || {
+        id: data.user.id,
+        email: data.user.email || sanitizedEmail,
+        username: data.user.email?.split('@')[0] || 'user',
+        role: 'user'
+      };
+
+      console.log('Login: Setting user', { id: finalUser.id, email: finalUser.email });
+      setUser(finalUser);
+      console.log('Login: User set successfully, login complete');
+      return;
     } catch (error: any) {
+      console.error('Login: Error in login function', error);
       // Handle timeout errors specifically
       if (error?.message?.includes('timeout') || error?.message?.includes('Failed to fetch')) {
         throw new Error('Connection timeout. Please check your internet connection and try again.');
