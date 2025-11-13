@@ -11,7 +11,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // Add timeout to prevent infinite loading (max 20 seconds)
   const [hasTimedOut, setHasTimedOut] = React.useState(false);
-  
+
   React.useEffect(() => {
     if (isLoading) {
       const timeout = setTimeout(() => {
@@ -26,8 +26,12 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   // If loading for too long, proceed anyway
   if (isLoading && !hasTimedOut) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500/20 border-t-blue-500"></div>
+          <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-blue-500/30"></div>
+        </div>
+        <p className="mt-6 text-sm text-muted-foreground animate-pulse">Loading your dashboard...</p>
       </div>
     );
   }

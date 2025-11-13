@@ -41,8 +41,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+    <div className="min-h-screen bg-background animate-fade-in">
+      <nav className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300 shadow-sm">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -65,7 +65,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     key={item.path}
                     to={item.path}
                     className={cn(
-                      "flex items-center space-x-1 px-2 py-2 rounded-md transition-all duration-200",
+                      "flex items-center space-x-1 px-2 py-2 rounded-md transition-all duration-200 transform hover:scale-105",
                       isActive
                         ? "bg-primary text-primary-foreground shadow-glow"
                         : "text-muted-foreground hover:text-foreground hover:bg-secondary"
@@ -134,8 +134,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden border-t border-border bg-card/95 backdrop-blur-sm">
-            <div className="px-4 py-4 space-y-4">
+          <div className="lg:hidden border-t border-border bg-card/95 backdrop-blur-sm animate-slide-down">
+            <div className="px-4 py-4 space-y-4 animate-fade-in">
               {/* User Info */}
               <div className="flex items-center space-x-2 pb-4 border-b border-border">
                 <User className="w-5 h-5 text-muted-foreground" />
@@ -198,8 +198,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         )}
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {children}
+      <main className="max-w-7xl mx-auto px-4 py-6 animate-fade-in">
+        <div className="animate-slide-up">
+          {children}
+        </div>
       </main>
     </div>
   );

@@ -249,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Get user details from our users table - with fallback
+        let userSet = false;
         try {
           const { data: userData, error: userError } = await supabase
             .from('users')
@@ -263,6 +264,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 username: userData.username,
                 role: userData.role
             });
+            userSet = true;
+            // Wait a moment to ensure state is updated
+            await new Promise(resolve => setTimeout(resolve, 100));
             return;
           }
 
@@ -284,6 +288,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 username: retryUserData.username,
                 role: retryUserData.role
               });
+              userSet = true;
+              // Wait a moment to ensure state is updated
+              await new Promise(resolve => setTimeout(resolve, 100));
               return;
             }
           }
@@ -292,12 +299,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Fallback: use auth session data if database query fails
-        setUser({
-          id: data.user.id,
-          email: data.user.email || sanitizedEmail,
-          username: data.user.email?.split('@')[0] || 'user',
-          role: 'user'
-        });
+        if (!userSet) {
+          setUser({
+            id: data.user.id,
+            email: data.user.email || sanitizedEmail,
+            username: data.user.email?.split('@')[0] || 'user',
+            role: 'user'
+          });
+          // Wait a moment to ensure state is updated
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
         return;
     } catch (error: any) {
       // Handle timeout errors specifically

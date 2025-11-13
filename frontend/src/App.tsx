@@ -1,4 +1,5 @@
 import ProtectedRoute from "@/components/ProtectedRoute";
+import PageTransition from "@/components/PageTransition";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -43,9 +44,12 @@ const queryClient = new QueryClient({
 
 // Optimized loading component with skeleton
 const PageLoader = () => (
-  <div className="flex flex-col items-center justify-center min-h-screen space-y-4">
-    <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
-    <p className="text-sm text-muted-foreground animate-pulse">Loading...</p>
+  <div className="flex flex-col items-center justify-center min-h-screen space-y-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="relative">
+      <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500/20 border-t-blue-500"></div>
+      <div className="absolute inset-0 animate-ping rounded-full h-16 w-16 border-2 border-blue-500/30"></div>
+    </div>
+    <p className="text-sm text-muted-foreground animate-pulse">Loading page...</p>
   </div>
 );
 
@@ -56,15 +60,15 @@ const IndustrySetup: React.FC<{ userId: string }> = ({ userId }) => {
     <Layout>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/stock" element={<Stock />} />
-          <Route path="/pos" element={<POS />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/returns" element={<Returns />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/printer" element={<PrinterManager />} />
-          <Route path="*" element={<NotFound />} />
+          <Route path="/" element={<PageTransition><Dashboard /></PageTransition>} />
+          <Route path="/products" element={<PageTransition><Products /></PageTransition>} />
+          <Route path="/stock" element={<PageTransition><Stock /></PageTransition>} />
+          <Route path="/pos" element={<PageTransition><POS /></PageTransition>} />
+          <Route path="/reports" element={<PageTransition><Reports /></PageTransition>} />
+          <Route path="/returns" element={<PageTransition><Returns /></PageTransition>} />
+          <Route path="/analytics" element={<PageTransition><Analytics /></PageTransition>} />
+          <Route path="/printer" element={<PageTransition><PrinterManager /></PageTransition>} />
+          <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
         </Routes>
       </Suspense>
     </Layout>

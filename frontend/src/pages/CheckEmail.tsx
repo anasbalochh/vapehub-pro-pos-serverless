@@ -6,27 +6,35 @@ import VapeHubLogo from "@/components/VapeHubLogo";
 
 const CheckEmail = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse-slow"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <VapeHubLogo size="lg" variant="contrast" />
+        <div className="text-center mb-8 animate-fade-in">
+          <div className="flex justify-center mb-4 animate-scale-in">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-full flex items-center justify-center shadow-xl border-2 border-blue-400 transform transition-transform duration-300 hover:scale-110">
+              <VapeHubLogo size="lg" variant="contrast" />
+            </div>
           </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm animate-slide-up">
             Check Your Email
           </h1>
         </div>
 
-        <Card className="bg-card/80 backdrop-blur-sm border-border shadow-2xl">
+        <Card className="bg-slate-800/95 backdrop-blur-xl border-slate-700 shadow-2xl animate-fade-in transform transition-all duration-300 hover:shadow-blue-500/20" style={{ animationDelay: '0.2s' }}>
           <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-xl">Email Confirmation Required</CardTitle>
+            <CardTitle className="text-xl text-white">Email Confirmation Required</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="text-center space-y-4">
+            <div className="text-center space-y-4 animate-slide-up">
               <div className="flex justify-center">
-                <div className="rounded-full bg-primary/10 p-4">
-                  <Mail className="h-12 w-12 text-primary" />
+                <div className="rounded-full bg-blue-500/20 p-4 animate-scale-in transform transition-transform duration-300 hover:scale-110">
+                  <Mail className="h-12 w-12 text-blue-400" />
                 </div>
               </div>
               <div className="space-y-2">
@@ -45,7 +53,7 @@ const CheckEmail = () => {
             <div className="space-y-2">
               <Button
                 asChild
-                className="w-full bg-gradient-primary shadow-glow"
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 <Link to="/login">
                   Go to Login
@@ -54,7 +62,7 @@ const CheckEmail = () => {
               <Button
                 asChild
                 variant="outline"
-                className="w-full"
+                className="w-full border-slate-600 text-white hover:bg-slate-700 transition-all duration-200"
               >
                 <Link to="/signup">
                   <ArrowLeft className="mr-2 h-4 w-4" />
