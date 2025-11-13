@@ -25,44 +25,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    let timeoutId: NodeJS.Timeout | null = null;
 
     const checkAuth = async () => {
       try {
         console.log('Auth: Checking existing session...');
 
-        // Set a timeout to prevent infinite loading (15 seconds - increased for slow connections)
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timeoutId = setTimeout(() => {
-            reject(new Error('Auth check timeout - please check your connection'));
-          }, 15000);
-        });
-
-        const sessionPromise = supabase.auth.getSession();
-
-        let sessionResult;
-        try {
-          sessionResult = await Promise.race([
-            sessionPromise,
-            timeoutPromise
-          ]);
-        } catch (raceError: any) {
-          // Timeout or other error
-          if (timeoutId) clearTimeout(timeoutId);
-          const errorMsg = raceError?.message || 'Unknown error';
-          console.warn('Auth: Session check failed:', errorMsg);
-          if (mounted) {
-            setIsLoading(false);
-          }
-          return;
-        }
-
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-
-        const { data: { session }, error } = sessionResult as any;
+        // Simplified - no race condition, let Supabase handle timeouts
+        const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
           console.warn('Auth: Session error:', error.message || error);
@@ -82,25 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         console.log('Auth: Session found, user ID:', session.user.id);
 
-        // Get user details from our users table with timeout
+        // Get user details from our users table - simplified, no race condition
         let userData = null;
         try {
-          const userDataPromise = supabase
+          const { data: dbUser, error: userError } = await supabase
             .from('users')
             .select('id, email, username, role')
             .eq('id', session.user.id)
             .single();
-
-          const userTimeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('User query timeout')), 3000); // Reduced to 3 seconds
-          });
-
-          const userResult = await Promise.race([
-            userDataPromise,
-            userTimeoutPromise
-          ]);
-
-          const { data: dbUser, error: userError } = userResult as any;
 
           if (dbUser && !userError) {
             userData = dbUser;
@@ -133,9 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted) {
           console.log('Auth: Setting isLoading to false');
           setIsLoading(false);
-        }
-        if (timeoutId) {
-          clearTimeout(timeoutId);
         }
       }
     };
@@ -184,9 +139,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
       subscription.unsubscribe();
     };
   }, []);
@@ -206,22 +158,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('Login: Starting authentication for', sanitizedEmail);
       console.log('Login: Checking Supabase configuration...');
-      
+
       // Check if Supabase is properly configured
       const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
       const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
-      
+
       if (!supabaseUrl || !supabaseKey) {
         const configError = 'Supabase configuration is missing! Please create a .env file in the frontend directory with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then restart the development server.';
         console.error('❌', configError);
         throw new Error(configError);
       }
-      
+
       console.log('Login: Supabase URL configured:', supabaseUrl.substring(0, 30) + '...');
       console.log('Login: Attempting sign in...');
 
-      // Use Supabase Auth - let the fetch timeout handle timing (60 seconds)
-      // Don't add an additional timeout here as it conflicts with the fetch timeout
+      // Use Supabase Auth - simplified, no custom timeout handling
       const { data, error } = await supabase.auth.signInWithPassword({
         email: sanitizedEmail,
         password: password
@@ -230,29 +181,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error('Login: Auth error', error);
         console.error('Login: Error code:', error.status, 'Error message:', error.message);
-        
+
         // Handle specific Supabase errors
         if (error.message?.includes('Invalid login credentials') || error.status === 400) {
           throw new Error('Invalid email or password. Please check your credentials and try again.');
         }
-        
+
         // Handle email confirmation error
         if (error.message?.includes('Email not confirmed') || error.message?.includes('unconfirmed')) {
           throw new Error('Please check your email and click the confirmation link before logging in.');
         }
-        
+
         // Handle network/timeout errors with more detail
         if (error.message?.includes('timeout') || error.message?.includes('Failed to fetch') || error.message?.includes('network') || error.message?.includes('NetworkError')) {
           const networkError = `Connection failed. Please check:\n1. Your Supabase URL and key in .env file\n2. Your internet connection\n3. Restart the development server after updating .env`;
           console.error('❌', networkError);
           throw new Error(networkError);
         }
-        
+
         // Handle configuration errors
         if (error.message?.includes('configuration') || error.message?.includes('missing')) {
           throw new Error('Supabase configuration error. Please check your .env file and restart the server.');
         }
-        
+
         // Generic error with actual message
         throw new Error(error.message || `Login failed (Error ${error.status || 'unknown'}). Please try again.`);
       }
@@ -269,21 +220,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Please confirm your email before logging in. Check your email for the confirmation link.');
       }
 
-      // Try to get user from database, but don't wait too long
+      // Try to get user from database - simplified, no race condition
       let userData = null;
       try {
-        const userQuery = supabase
+        const { data: dbUser, error: dbError } = await supabase
           .from('users')
           .select('id, email, username, role')
           .eq('id', data.user.id)
           .single();
-
-        const queryTimeout = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Query timeout')), 5000); // 5 second timeout
-        });
-
-        const queryResult = await Promise.race([userQuery, queryTimeout]);
-        const { data: dbUser, error: dbError } = queryResult as any;
 
         if (dbUser && !dbError) {
           userData = dbUser;
@@ -308,19 +252,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       console.error('Login: Error in login function', error);
       console.error('Login: Error type:', error?.name, 'Error message:', error?.message);
-      
+
       // If it's already a user-friendly error, just rethrow it
       if (error instanceof Error && error.message && !error.message.includes('timeout')) {
         throw error;
       }
-      
+
       // Handle timeout errors with more context
       if (error?.message?.includes('timeout') || error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError')) {
         const timeoutError = `Connection failed. Please check:\n1. Your Supabase URL and key in .env file\n2. Your internet connection\n3. Restart the development server after updating .env`;
         console.error('❌', timeoutError);
         throw new Error(timeoutError);
       }
-      
+
       // Re-throw the error as-is if it's already an Error
       throw error instanceof Error ? error : new Error('Login failed. Please try again.');
     }
