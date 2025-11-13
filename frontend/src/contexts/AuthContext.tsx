@@ -22,11 +22,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Set a maximum timeout to ensure isLoading is always false eventually
+  // Set a maximum timeout to ensure isLoading is always false eventually (reduced to 5 seconds for faster page load)
   useEffect(() => {
     const maxTimeout = setTimeout(() => {
       setIsLoading(false);
-    }, 20000); // 20 second absolute maximum
+    }, 5000); // 5 second absolute maximum - allows login page to load quickly
     
     return () => clearTimeout(maxTimeout);
   }, []);
@@ -37,9 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const checkAuth = async () => {
       try {
-        // Add timeout to prevent infinite loading (increased to 15 seconds)
+        // Use a shorter timeout and make it non-blocking
         const timeoutPromise = new Promise((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error('Auth check timeout')), 15000);
+          timeoutId = setTimeout(() => reject(new Error('Auth check timeout')), 5000);
         });
 
         const sessionPromise = supabase.auth.getSession();
@@ -51,9 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             timeoutPromise
           ]) as any;
         } catch (raceError: any) {
-          // Timeout occurred
+          // Timeout occurred - silently proceed without session
           clearTimeout(timeoutId);
-          console.warn('Auth check timeout, proceeding without session');
           if (mounted) {
             setIsLoading(false);
           }
@@ -71,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Get user details from our users table with timeout (increased to 8 seconds)
+        // Get user details from our users table with shorter timeout
         try {
           const userQueryPromise = supabase
             .from('users')
@@ -80,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single() as any;
 
           const userTimeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('User query timeout')), 8000);
+            setTimeout(() => reject(new Error('User query timeout')), 3000);
           });
 
           let userResult;
@@ -90,8 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               userTimeoutPromise
             ]) as any;
           } catch (queryError: any) {
-            // Query timed out or failed, use fallback
-            console.warn('User query failed or timed out, using session data:', queryError?.message);
+            // Query timed out or failed, use fallback silently
             if (mounted && session.user) {
               setUser({
                 id: session.user.id,
@@ -99,6 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 username: session.user.email?.split('@')[0] || 'user',
                 role: 'user'
               });
+            }
+            if (mounted) {
+              setIsLoading(false);
             }
             return;
           }
@@ -113,8 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
           }
         } catch (userError) {
-          // If users table query fails, use fallback from session
-          console.warn('Failed to fetch user from database, using session data:', userError);
+          // If users table query fails, use fallback from session silently
           if (mounted && session.user) {
             setUser({
               id: session.user.id,
@@ -125,8 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error: any) {
-        console.warn('Auth check error:', error?.message || error);
-        // On error or timeout, set loading to false and proceed
+        // Silently handle errors - don't log timeout as it's expected
         if (mounted) {
           setIsLoading(false);
         }
