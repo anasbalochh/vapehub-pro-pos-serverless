@@ -36,53 +36,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Get user details from our users table
         const { data: userData } = await supabase
-          .from('users')
-          .select('id, email, username, role')
-          .eq('id', session.user.id)
-          .single();
+            .from('users')
+            .select('id, email, username, role')
+            .eq('id', session.user.id)
+            .single();
 
         if (mounted && userData) {
           setUser({
-            id: userData.id,
-            email: userData.email,
-            username: userData.username,
-            role: userData.role
+              id: userData.id,
+              email: userData.email,
+              username: userData.username,
+              role: userData.role
           });
         }
       } catch (error) {
         // Silently handle errors
       } finally {
         if (mounted) {
-          setIsLoading(false);
+        setIsLoading(false);
         }
       }
     };
 
     checkAuth();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      if (event === 'SIGNED_IN' && session?.user) {
+          if (event === 'SIGNED_IN' && session?.user) {
         const { data: userData } = await supabase
-          .from('users')
-          .select('id, email, username, role')
-          .eq('id', session.user.id)
-          .single();
+              .from('users')
+              .select('id, email, username, role')
+              .eq('id', session.user.id)
+              .single();
 
         if (userData) {
           setUser({
-            id: userData.id,
-            email: userData.email,
-            username: userData.username,
-            role: userData.role
+                id: userData.id,
+                email: userData.email,
+                username: userData.username,
+                role: userData.role
           });
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-      }
-    });
+            }
+          } else if (event === 'SIGNED_OUT') {
+            setUser(null);
+          }
+        });
 
     return () => {
       mounted = false;
@@ -91,16 +91,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Validate input
-    if (!email || !password) {
-      throw new Error('Email and password are required.');
-    }
+      // Validate input
+      if (!email || !password) {
+        throw new Error('Email and password are required.');
+      }
 
-    // Sanitize email
-    const sanitizedEmail = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
-      throw new Error('Invalid email format.');
-    }
+      // Sanitize email
+      const sanitizedEmail = email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
+        throw new Error('Invalid email format.');
+      }
 
     try {
       // Use Supabase Auth with timeout handling
@@ -129,49 +129,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Login failed. Please try again.');
       }
 
-      // Check if email is confirmed
-      if (!data.user.email_confirmed_at) {
-        throw new Error('Please confirm your email before logging in. Check your email for the confirmation link.');
-      }
+        // Check if email is confirmed
+        if (!data.user.email_confirmed_at) {
+          throw new Error('Please confirm your email before logging in. Check your email for the confirmation link.');
+        }
 
-      // Get user details from our users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, email, username, role')
-        .eq('id', data.user.id)
-        .single();
-
-      if (userData && !userError) {
-        setUser({
-          id: userData.id,
-          email: userData.email,
-          username: userData.username,
-          role: userData.role
-        });
-        return;
-      }
-
-      // If user doesn't exist, try to create them (might be created by trigger)
-      if (userError?.code === 'PGRST116') {
-        // Wait a moment for trigger to create user
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const { data: retryUserData } = await supabase
+        // Get user details from our users table
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .select('id, email, username, role')
           .eq('id', data.user.id)
           .single();
 
-        if (retryUserData) {
+        if (userData && !userError) {
+        setUser({
+            id: userData.id,
+            email: userData.email,
+            username: userData.username,
+            role: userData.role
+        });
+        return;
+      }
+
+      // If user doesn't exist, try to create them (might be created by trigger)
+          if (userError?.code === 'PGRST116') {
+        // Wait a moment for trigger to create user
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+                const { data: retryUserData } = await supabase
+                  .from('users')
+                  .select('id, email, username, role')
+                  .eq('id', data.user.id)
+                  .single();
+
+                if (retryUserData) {
           setUser({
-            id: retryUserData.id,
-            email: retryUserData.email,
-            username: retryUserData.username,
-            role: retryUserData.role
+                    id: retryUserData.id,
+                    email: retryUserData.email,
+                    username: retryUserData.username,
+                    role: retryUserData.role
           });
           return;
-        }
-      }
+                }
+              }
 
       throw new Error('User profile not found. Please contact support.');
     } catch (error: any) {

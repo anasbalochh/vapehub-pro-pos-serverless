@@ -43,7 +43,7 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
   const sortedFields = React.useMemo(() => {
     return [...fields]
       .filter(field => field.fieldKey && field.fieldKey.trim() !== '' && field.isActive !== false)
-      .sort((a, b) => a.displayOrder - b.displayOrder);
+    .sort((a, b) => a.displayOrder - b.displayOrder);
   }, [fields]);
 
   // Initialize form data and date values
@@ -197,19 +197,19 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
           }
 
           const numValue = Number(stringValue);
-          if (isNaN(numValue)) {
+        if (isNaN(numValue)) {
             newErrors[field.fieldKey] = 'Please enter a number';
-            return;
-          }
+          return;
+        }
 
-          if (field.validationRules?.min !== undefined && numValue < field.validationRules.min) {
-            newErrors[field.fieldKey] = `${field.fieldLabel} must be at least ${field.validationRules.min}`;
-            return;
-          }
+        if (field.validationRules?.min !== undefined && numValue < field.validationRules.min) {
+          newErrors[field.fieldKey] = `${field.fieldLabel} must be at least ${field.validationRules.min}`;
+          return;
+        }
 
-          if (field.validationRules?.max !== undefined && numValue > field.validationRules.max) {
-            newErrors[field.fieldKey] = `${field.fieldLabel} must be at most ${field.validationRules.max}`;
-            return;
+        if (field.validationRules?.max !== undefined && numValue > field.validationRules.max) {
+          newErrors[field.fieldKey] = `${field.fieldLabel} must be at most ${field.validationRules.max}`;
+          return;
           }
         }
       }
@@ -628,12 +628,12 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
             }
 
             return (
-              <div className="bg-gradient-to-r from-accent/5 to-primary/5 p-4 rounded-lg border border-accent/20">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-accent rounded-full"></div>
-                  Additional Product Details
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gradient-to-r from-accent/5 to-primary/5 p-4 rounded-lg border border-accent/20">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <div className="w-2 h-2 bg-accent rounded-full"></div>
+                Additional Product Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {customFields.map((field) => (
                     <div key={field.fieldKey} className="space-y-2">
                       <Label
@@ -655,8 +655,8 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
                       )}
                     </div>
                   ))}
-                </div>
               </div>
+            </div>
             );
           })()}
         </div>

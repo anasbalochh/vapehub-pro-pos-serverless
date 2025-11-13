@@ -30,16 +30,11 @@ export interface OrderItem {
 
 // Reports API
 export const reportsApi = {
-  async getSummary(dateRange?: { start?: string; end?: string }) {
+  async getSummary() {
     try {
       const user = await getCurrentUser();
       console.log('getSummary - Current user:', user);
-      
-      // Get orders with date filtering if provided
-      const orders = dateRange?.start || dateRange?.end
-        ? await db.getOrders(user.id, undefined, 0, dateRange)
-        : await db.getSalesSummary(user.id);
-      
+      const orders = await db.getSalesSummary(user.id);
       console.log('getSummary - Orders from database:', orders);
 
       const sales = orders.filter(o => o.type === 'Sale');
@@ -73,15 +68,15 @@ export const reportsApi = {
     }
   },
 
-  async getTransactions(limit?: number, offset = 0, dateRange?: { start?: string; end?: string }) {
+  async getTransactions(limit?: number, offset = 0) {
     try {
       const user = await getCurrentUser();
       if (!user?.id) {
         throw new Error('User not authenticated');
       }
 
-      // Fetch orders with date filtering if provided
-      const orders = await db.getOrders(user.id, limit, offset, dateRange);
+      // Fetch all orders if no limit specified
+      const orders = await db.getOrders(user.id, limit, offset);
 
       // Ensure we return an array even if there's an issue
       return { data: Array.isArray(orders) ? orders : [] };
@@ -121,9 +116,9 @@ export const reportsApi = {
     return { data: topProducts };
   },
 
-  async getSalesByCategory(dateRange?: { start?: string; end?: string }) {
+  async getSalesByCategory() {
     const user = await getCurrentUser();
-    const orderItems = await db.getSalesByCategory(user.id, dateRange) as any[];
+    const orderItems = await db.getSalesByCategory(user.id) as any[];
 
     // Group by category and calculate totals
     const categorySales: any = {};
@@ -183,9 +178,9 @@ export const reportsApi = {
   },
 
   // Aliases used in pages
-  summary: (dateRange?: { start?: string; end?: string }) => reportsApi.getSummary(dateRange),
-  transactions: (params?: { limit?: number; offset?: number; start?: string; end?: string }) =>
-    reportsApi.getTransactions(params?.limit, params?.offset, params?.start || params?.end ? { start: params.start, end: params.end } : undefined),
+  summary: () => reportsApi.getSummary(),
+  transactions: (params?: { limit?: number; offset?: number }) =>
+    reportsApi.getTransactions(params?.limit, params?.offset),
   topProducts: (limit?: number) => reportsApi.getTopProducts(limit),
-  salesByCategory: (dateRange?: { start?: string; end?: string }) => reportsApi.getSalesByCategory(dateRange),
+  salesByCategory: () => reportsApi.getSalesByCategory(),
 };

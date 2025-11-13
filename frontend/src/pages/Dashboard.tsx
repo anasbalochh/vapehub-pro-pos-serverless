@@ -63,37 +63,37 @@ const Dashboard = () => {
   const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
   const productsArray = Array.isArray(productsData) ? productsData : [];
 
-  const today = new Date().toISOString().slice(0, 10);
-  const todayTx = transactionsArray.filter((o: any) => {
-    const orderDate = o.created_at || o.createdAt;
-    return orderDate?.slice(0, 10) === today;
-  });
+      const today = new Date().toISOString().slice(0, 10);
+      const todayTx = transactionsArray.filter((o: any) => {
+        const orderDate = o.created_at || o.createdAt;
+        return orderDate?.slice(0, 10) === today;
+      });
 
-  const todaySales = todayTx
-    .filter((o: any) => o.type === 'Sale')
-    .reduce((s: number, o: any) => s + (o.total || 0), 0);
+      const todaySales = todayTx
+        .filter((o: any) => o.type === 'Sale')
+        .reduce((s: number, o: any) => s + (o.total || 0), 0);
 
-  const ordersCount = todayTx.length;
-  const totalProducts = productsArray.length;
-  const revenue = (summary as any).netRevenue ?? 0;
+      const ordersCount = todayTx.length;
+      const totalProducts = productsArray.length;
+      const revenue = (summary as any).netRevenue ?? 0;
 
-  // Get recent activity (last 5 transactions)
+      // Get recent activity (last 5 transactions)
   const recentActivity = transactionsArray
-    .slice(0, 5)
-    .map((tx: any) => ({
-      id: tx.id || tx._id,
-      orderNumber: tx.order_number || tx.orderNumber,
-      type: tx.type,
-      total: tx.total,
-      createdAt: tx.created_at || tx.createdAt,
-      timeAgo: getTimeAgo(tx.created_at || tx.createdAt)
-    }));
+        .slice(0, 5)
+        .map((tx: any) => ({
+          id: tx.id || tx._id,
+          orderNumber: tx.order_number || tx.orderNumber,
+          type: tx.type,
+          total: tx.total,
+          createdAt: tx.created_at || tx.createdAt,
+          timeAgo: getTimeAgo(tx.created_at || tx.createdAt)
+        }));
 
   const stats = [
-    { title: "Today's Sales", value: `${formatCurrency(todaySales)}`, change: "", icon: Banknote, color: "text-success" },
-    { title: "Total Products", value: String(totalProducts), change: "", icon: Package, color: "text-accent" },
-    { title: "Orders", value: String(ordersCount), change: "", icon: ShoppingCart, color: "text-primary" },
-    { title: "Revenue", value: `${formatCurrency(revenue)}`, change: "", icon: TrendingUp, color: "text-success" },
+        { title: "Today's Sales", value: `${formatCurrency(todaySales)}`, change: "", icon: Banknote, color: "text-success" },
+        { title: "Total Products", value: String(totalProducts), change: "", icon: Package, color: "text-accent" },
+        { title: "Orders", value: String(ordersCount), change: "", icon: ShoppingCart, color: "text-primary" },
+        { title: "Revenue", value: `${formatCurrency(revenue)}`, change: "", icon: TrendingUp, color: "text-success" },
   ];
 
   const handleRefresh = async () => {

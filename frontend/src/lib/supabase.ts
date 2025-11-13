@@ -484,30 +484,17 @@ export const db = {
         return data;
     },
 
-    async getSalesByCategory(userId: string, dateRange?: { start?: string; end?: string }) {
-        let query = supabase
+    async getSalesByCategory(userId: string) {
+        const { data, error } = await supabase
             .from('order_items')
             .select(`
         category,
         quantity,
         line_total,
-        orders!inner(user_id, created_at)
+        orders!inner(user_id)
       `)
             .eq('orders.user_id', userId)
             .eq('orders.type', 'Sale');
-
-        // Apply date filtering if provided
-        if (dateRange?.start) {
-            query = query.gte('orders.created_at', dateRange.start);
-        }
-        if (dateRange?.end) {
-            // Add one day to end date to include the entire end date
-            const endDate = new Date(dateRange.end);
-            endDate.setDate(endDate.getDate() + 1);
-            query = query.lt('orders.created_at', endDate.toISOString().split('T')[0]);
-        }
-
-        const { data, error } = await query;
 
         if (error) throw error;
         return data;

@@ -14,7 +14,7 @@ const Analytics = () => {
   // Use React Query for real-time data
   const { data: summaryData } = useQuery({
     queryKey: ['summary', 'analytics', range],
-    queryFn: () => reportsApi.summary(range.start || range.end ? range : undefined),
+    queryFn: () => reportsApi.summary(),
     enabled: !!user?.id,
     staleTime: 1000 * 30, // 30 seconds
     select: (response) => (response as any).data || response,
@@ -38,7 +38,7 @@ const Analytics = () => {
 
   const { data: categoriesData } = useQuery({
     queryKey: ['salesByCategory', 'analytics', range],
-    queryFn: () => reportsApi.salesByCategory(range.start || range.end ? range : undefined),
+    queryFn: () => reportsApi.salesByCategory(),
     enabled: !!user?.id,
     staleTime: 1000 * 60, // 1 minute
     select: (response) => (response as any).data || response || [],
