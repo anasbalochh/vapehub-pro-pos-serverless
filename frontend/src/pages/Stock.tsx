@@ -1,4 +1,6 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -9,24 +11,20 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
-import { dynamicProductsApi } from "@/lib/multi-industry-api";
+import { dynamicProductsApi, fieldConfigApi } from "@/lib/multi-industry-api";
+import { formatCurrency } from "@/lib/utils";
+import type { DynamicProduct, ProductFieldConfig } from '@/types/multi-industry';
 import { Minus, Plus, Search } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-interface StockItem {
-  _id: string;
-  sku: string;
-  name: string;
-  brand: string;
-  stock: number;
-}
-
 const Stock = () => {
-  const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const [products, setProducts] = useState<DynamicProduct[]>([]);
+  const [fields, setFields] = useState<ProductFieldConfig[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [stockAdjustments, setStockAdjustments] = useState<Record<string, string>>({});
   const { user } = useAuth();
 
   // Debounce search term for better performance
@@ -37,7 +35,7 @@ const Stock = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const loadStockItems = useCallback(async () => {
+  const loadData = useCallback(async () => {
     if (!user?.id) {
       console.log('No user ID available, skipping stock load');
       return;
@@ -46,22 +44,19 @@ const Stock = () => {
     setIsLoading(true);
 
     try {
-      console.log('Stock: Loading stock items for user:', user.id, 'with search term:', debouncedSearchTerm);
+      console.log('Stock: Loading products for user:', user.id, 'with search term:', debouncedSearchTerm);
 
-      const response = await dynamicProductsApi.list(user.id, debouncedSearchTerm);
-      console.log('Stock: Successfully loaded', response.data.length, 'products from Supabase');
+      // Load both products and field configurations
+      const [productsResponse, fieldsResponse] = await Promise.all([
+        dynamicProductsApi.list(user.id, debouncedSearchTerm),
+        fieldConfigApi.getUserFields(user.id)
+      ]);
 
-      // Map to stock items format
-      const stockData = response.data.map(product => ({
-        _id: product._id || product.id,
-        sku: product.sku,
-        name: product.name,
-        brand: product.brand,
-        stock: product.stock || 0
-      }));
+      console.log('Stock: Successfully loaded', productsResponse.data.length, 'products from Supabase');
+      console.log('Stock: Successfully loaded', fieldsResponse.data.length, 'field configurations');
 
-      setStockItems(stockData);
-      console.log('Stock: UI state updated with', stockData.length, 'items');
+      setProducts(productsResponse.data || []);
+      setFields(fieldsResponse.data || []);
 
     } catch (error: any) {
       console.error('Failed to load stock items from Supabase:', error);
@@ -72,30 +67,116 @@ const Stock = () => {
         toast.error('Failed to load stock items from Supabase');
       }
 
-      setStockItems([]);
+      setProducts([]);
+      setFields([]);
     } finally {
       setIsLoading(false);
     }
   }, [user?.id, debouncedSearchTerm]);
 
   useEffect(() => {
-    loadStockItems();
-  }, [loadStockItems]);
+    loadData();
+  }, [loadData]);
 
-  const filteredItems = stockItems; // No need for client-side filtering since we do server-side filtering
+  // Get visible fields for table display - show all active fields that have data (like Products page)
+  const visibleFields = useMemo(() => {
+    if (products.length === 0) {
+      // If no products, show all active fields (so user can see what fields are available)
+      return fields
+        .filter(field => field.isActive)
+        .sort((a, b) => a.displayOrder - b.displayOrder);
+    }
 
-  const updateQuantity = async (id: string, delta: number) => {
-    const current = stockItems.find((i) => i._id === id);
-    if (!current) return;
-    const newStock = Math.max(0, (current.stock ?? 0) + delta);
-    setStockItems(stockItems.map((i) => (i._id === id ? { ...i, stock: newStock } : i)));
+    // Get all field keys that have data in at least one product
+    const fieldsWithData = new Set<string>();
+
+    products.forEach(product => {
+      // Check direct product properties
+      ['sku', 'name', 'brand', 'category', 'salePrice', 'retailPrice', 'stock'].forEach(key => {
+        if (product[key] !== null && product[key] !== undefined && product[key] !== '') {
+          fieldsWithData.add(key);
+        }
+      });
+
+      // Check customData
+      if (product.customData) {
+        Object.keys(product.customData).forEach(key => {
+          const value = product.customData[key];
+          if (value !== null && value !== undefined && value !== '' &&
+              !(Array.isArray(value) && value.length === 0)) {
+            fieldsWithData.add(key);
+          }
+        });
+      }
+    });
+
+    // Return fields that are active and have data (or are core fields)
+    const coreFields = ['sku', 'name', 'brand', 'category', 'salePrice', 'retailPrice', 'stock'];
+    return fields
+      .filter(field => {
+        if (!field.isActive) return false;
+        // Always show core fields
+        if (coreFields.includes(field.fieldKey)) return true;
+        // Show custom fields if they have data
+        return fieldsWithData.has(field.fieldKey);
+      })
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+  }, [fields, products]);
+
+  const updateQuantity = async (productId: string, delta: number) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    const adjustmentValue = stockAdjustments[productId] || '';
+    const adjustmentAmount = adjustmentValue ? Number(adjustmentValue) : delta;
+    
+    if (adjustmentValue && (isNaN(adjustmentAmount) || adjustmentAmount <= 0)) {
+      toast.error('Please enter a valid positive number');
+      return;
+    }
+
+    const currentStock = Number(product.stock || product.customData?.stock || 0);
+    const newStock = Math.max(0, currentStock + adjustmentAmount);
+    
     try {
-      await dynamicProductsApi.update(id, { stock: newStock });
-      toast.success(`Stock ${delta > 0 ? "increased" : "decreased"} successfully!`);
-    } catch (e) {
+      // Get all product data to update
+      const updatedData = {
+        sku: product.sku,
+        name: product.name,
+        brand: product.brand,
+        category: product.category,
+        salePrice: product.salePrice || product.customData?.salePrice,
+        retailPrice: product.retailPrice || product.customData?.retailPrice,
+        stock: newStock,
+        ...(product.customData || {})
+      };
+
+      await dynamicProductsApi.update(productId, updatedData);
+
+      // Clear the adjustment input for this product
+      setStockAdjustments(prev => {
+        const updated = { ...prev };
+        delete updated[productId];
+        return updated;
+      });
+
+      // Reload data to get updated stock
+      await loadData();
+
+      toast.success(`Stock ${adjustmentAmount > 0 ? "increased" : "decreased"} by ${Math.abs(adjustmentAmount)} successfully!`);
+    } catch (e: any) {
       console.error(e);
       toast.error("Failed to update stock");
     }
+  };
+
+  const handleAdjustmentInputChange = (productId: string, value: string) => {
+    // Only allow numbers
+    const numericValue = value.replace(/[^0-9]/g, '');
+    setStockAdjustments(prev => ({
+      ...prev,
+      [productId]: numericValue
+    }));
   };
 
   const getStockStatus = (quantity: number) => {
@@ -118,7 +199,7 @@ const Stock = () => {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
         <Input
-          placeholder="Search stock by name..."
+          placeholder="Search products by name or SKU..."
           value={searchTerm}
           onChange={(e) => {
             console.log('Stock search term changed to:', e.target.value);
@@ -128,82 +209,174 @@ const Stock = () => {
         />
       </div>
 
-      <div className="border border-border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-card/50">
-              <TableHead>SKU</TableHead>
-              <TableHead>Product Name</TableHead>
-              <TableHead>Brand</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                    <span className="text-muted-foreground">Loading stock items from Supabase...</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : filteredItems.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  <div className="text-muted-foreground">
-                    {searchTerm ? 'No stock items found matching your search.' : 'No stock items found. Add products to manage stock.'}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredItems.map((item) => {
-                const status = getStockStatus(item.stock ?? 0);
-                return (
-                  <TableRow key={item._id} className="hover:bg-secondary/50 transition-all duration-200">
-                    <TableCell className="font-medium text-foreground">{item.sku}</TableCell>
-                    <TableCell className="text-foreground">{item.name}</TableCell>
-                    <TableCell className="text-foreground">{item.brand}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg font-bold text-foreground">{item.stock ?? 0}</span>
-                        <span className="text-muted-foreground">units</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`font-medium ${status.color}`}>
-                        {status.text}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => updateQuantity(item._id, -1)}
-                          className="hover:bg-destructive/20 hover:text-destructive hover:border-destructive transition-all duration-200"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => updateQuantity(item._id, 1)}
-                          className="hover:bg-success/20 hover:text-success hover:border-success transition-all duration-200"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+      <Card>
+        <CardHeader>
+          <CardTitle>Stock Items ({products.length})</CardTitle>
+          <CardDescription>
+            {products.length === 0
+              ? 'No products found. Add products to manage stock.'
+              : `Showing ${products.length} products`
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                <span className="text-muted-foreground">Loading stock items...</span>
+              </div>
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-muted-foreground">
+                {searchTerm ? 'No products found matching your search.' : 'No products found. Add products to manage stock.'}
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-card/50">
+                    {visibleFields.map(field => (
+                      <TableHead key={field.fieldKey}>{field.fieldLabel}</TableHead>
+                    ))}
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Stock Adjustment</TableHead>
                   </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                </TableHeader>
+                <TableBody>
+                  {products.map((product) => {
+                    const stockValue = Number(product.stock || product.customData?.stock || 0);
+                    const status = getStockStatus(stockValue);
+                    const adjustmentValue = stockAdjustments[product.id] || '';
+
+                    return (
+                      <TableRow key={product.id} className="hover:bg-secondary/50 transition-all duration-200">
+                        {visibleFields.map(field => {
+                          // Get the value from customData or direct product property
+                          const value = product.customData?.[field.fieldKey] !== undefined
+                            ? product.customData[field.fieldKey]
+                            : product[field.fieldKey];
+
+                          return (
+                            <TableCell key={field.fieldKey}>
+                              {(() => {
+                                // Handle salePrice and retailPrice specially
+                                if (field.fieldKey === 'salePrice') {
+                                  const price = Number(value) || 0;
+                                  return <span className="font-bold text-green-600">{formatCurrency(price)}</span>;
+                                }
+                                if (field.fieldKey === 'retailPrice') {
+                                  const price = Number(value);
+                                  return price ? (
+                                    <span className="text-xs text-muted-foreground line-through">{formatCurrency(price)}</span>
+                                  ) : '-';
+                                }
+                                if (field.fieldKey === 'stock') {
+                                  return (
+                                    <span className={`font-medium ${stockValue > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      {stockValue} {stockValue === 0 ? '(Out)' : ''}
+                                    </span>
+                                  );
+                                }
+                                if (field.fieldKey === 'category') {
+                                  return value ? (
+                                    <Badge variant="outline" className="text-xs">{value}</Badge>
+                                  ) : '-';
+                                }
+                                if (field.fieldKey === 'brand') {
+                                  return value ? (
+                                    <Badge variant="secondary" className="text-xs">{value}</Badge>
+                                  ) : '-';
+                                }
+                                // Handle other field types
+                                if (field.fieldType === 'boolean') {
+                                  return value ? 'Yes' : 'No';
+                                } else if (Array.isArray(value)) {
+                                  return value.join(', ');
+                                } else if (field.fieldType === 'date' && value) {
+                                  // Format date fields properly - handle both MM/DD/YYYY and ISO formats
+                                  try {
+                                    let date;
+                                    if (typeof value === 'string' && value.includes('/')) {
+                                      // Handle MM/DD/YYYY format
+                                      const [month, day, year] = value.split('/');
+                                      date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                    } else {
+                                      // Handle ISO format
+                                      date = new Date(value);
+                                    }
+
+                                    if (!isNaN(date.getTime())) {
+                                      return date.toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: '2-digit',
+                                        day: '2-digit'
+                                      });
+                                    }
+                                  } catch (e) {
+                                    // If date parsing fails, return original value
+                                  }
+                                  return value;
+                                } else {
+                                  return value !== null && value !== undefined && value !== '' ? String(value) : '-';
+                                }
+                              })()}
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell>
+                          <span className={`font-medium ${status.color}`}>
+                            {status.text}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-2">
+                            <div className="flex items-center gap-1 border border-border rounded-md p-1">
+                              <Input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="Qty"
+                                value={adjustmentValue}
+                                onChange={(e) => handleAdjustmentInputChange(product.id, e.target.value)}
+                                className="w-16 h-8 text-center text-sm border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && adjustmentValue) {
+                                    updateQuantity(product.id, 0);
+                                  }
+                                }}
+                              />
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => updateQuantity(product.id, -1)}
+                              className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive hover:border-destructive transition-all duration-200"
+                              title="Decrease stock by 1 or by entered amount"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => updateQuantity(product.id, 1)}
+                              className="h-8 w-8 hover:bg-success/20 hover:text-success hover:border-success transition-all duration-200"
+                              title="Increase stock by 1 or by entered amount"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

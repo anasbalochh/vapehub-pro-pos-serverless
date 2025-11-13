@@ -387,7 +387,7 @@ export const db = {
         return data;
     },
 
-    async getOrders(userId: string, limit?: number, offset = 0) {
+    async getOrders(userId: string, limit?: number, offset = 0, dateRange?: { start?: string; end?: string }) {
         try {
             let query = supabase
             .from('orders')
@@ -395,8 +395,20 @@ export const db = {
         *,
         order_items (*)
       `)
-            .eq('user_id', userId)
-                .order('created_at', { ascending: false });
+            .eq('user_id', userId);
+
+            // Apply date filtering if provided
+            if (dateRange?.start) {
+                query = query.gte('created_at', dateRange.start);
+            }
+            if (dateRange?.end) {
+                // Add one day to end date to include the entire end date
+                const endDate = new Date(dateRange.end);
+                endDate.setDate(endDate.getDate() + 1);
+                query = query.lt('created_at', endDate.toISOString().split('T')[0]);
+            }
+
+            query = query.order('created_at', { ascending: false });
 
             // Only apply limit if specified, otherwise get all orders
             if (limit && limit > 0) {
@@ -472,17 +484,30 @@ export const db = {
         return data;
     },
 
-    async getSalesByCategory(userId: string) {
-        const { data, error } = await supabase
+    async getSalesByCategory(userId: string, dateRange?: { start?: string; end?: string }) {
+        let query = supabase
             .from('order_items')
             .select(`
         category,
         quantity,
         line_total,
-        orders!inner(user_id)
+        orders!inner(user_id, created_at)
       `)
             .eq('orders.user_id', userId)
             .eq('orders.type', 'Sale');
+
+        // Apply date filtering if provided
+        if (dateRange?.start) {
+            query = query.gte('orders.created_at', dateRange.start);
+        }
+        if (dateRange?.end) {
+            // Add one day to end date to include the entire end date
+            const endDate = new Date(dateRange.end);
+            endDate.setDate(endDate.getDate() + 1);
+            query = query.lt('orders.created_at', endDate.toISOString().split('T')[0]);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
         return data;
