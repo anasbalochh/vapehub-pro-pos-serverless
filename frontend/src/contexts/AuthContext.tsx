@@ -21,13 +21,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Set a maximum timeout to ensure isLoading is always false eventually (reduced to 5 seconds for faster page load)
+
+  // Set a maximum timeout to ensure isLoading is always false eventually
   useEffect(() => {
     const maxTimeout = setTimeout(() => {
       setIsLoading(false);
-    }, 5000); // 5 second absolute maximum - allows login page to load quickly
-    
+    }, 10000); // 10 second absolute maximum - allows for slower connections
+
     return () => clearTimeout(maxTimeout);
   }, []);
 
@@ -37,13 +37,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const checkAuth = async () => {
       try {
-        // Use a shorter timeout and make it non-blocking
-        const timeoutPromise = new Promise((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error('Auth check timeout')), 5000);
+        // Check localStorage first for faster initial load
+        const storedSession = typeof window !== 'undefined'
+          ? localStorage.getItem('supabase.auth.token')
+          : null;
+
+        // Use a longer timeout to allow for slower connections
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error('Auth check timeout'));
+          }, 10000); // Increased to 10 seconds
         });
 
         const sessionPromise = supabase.auth.getSession();
-        
+
         let sessionResult;
         try {
           sessionResult = await Promise.race([
@@ -52,15 +59,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ]) as any;
         } catch (raceError: any) {
           // Timeout occurred - silently proceed without session
-          clearTimeout(timeoutId);
+          // Don't log this as it's expected behavior for slow connections
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
           if (mounted) {
             setIsLoading(false);
           }
           return;
         }
 
-        clearTimeout(timeoutId);
-        
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+
         const { data: { session }, error } = sessionResult;
 
         if (error || !session?.user) {
@@ -78,8 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('id', session.user.id)
             .single() as any;
 
-          const userTimeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('User query timeout')), 3000);
+          const userTimeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('User query timeout')), 5000);
           });
 
           let userResult;
@@ -126,6 +138,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error: any) {
         // Silently handle errors - don't log timeout as it's expected
+        // Only log non-timeout errors in development
+        if (error?.message && !error.message.includes('timeout') && import.meta.env.DEV) {
+          console.warn('Auth check error:', error.message);
+        }
         if (mounted) {
           setIsLoading(false);
         }
@@ -140,7 +156,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    checkAuth();
+    // Wrap checkAuth to prevent unhandled promise rejections
+    checkAuth().catch((error) => {
+      // Silently handle any unhandled errors from checkAuth
+      // This prevents console errors from timeout rejections
+      if (mounted && error?.message && !error.message.includes('timeout')) {
+        // Only log non-timeout errors in development
+        if (import.meta.env.DEV) {
+          console.warn('Auth check failed:', error.message);
+        }
+      }
+      if (mounted) {
+        setIsLoading(false);
+      }
+    });
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
