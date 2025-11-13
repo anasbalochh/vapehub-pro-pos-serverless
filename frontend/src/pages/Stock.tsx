@@ -130,10 +130,10 @@ const Stock = () => {
   const updateQuantity = async (id: string, delta: number) => {
     const product = products.find((p) => p.id === id);
     if (!product) return;
-    
+
     const currentStock = product.stock || product.customData?.stock || 0;
     const newStock = Math.max(0, Number(currentStock) + delta);
-    
+
     // Prepare update data
     const updateData: any = {
       sku: product.sku,
@@ -148,17 +148,17 @@ const Stock = () => {
 
     try {
       await dynamicProductsApi.update(id, updateData);
-      
+
       // Reload data to ensure we have the latest from the database
       await loadData();
-      
+
       // Clear the adjustment input for this product
       setStockAdjustments(prev => {
         const updated = { ...prev };
         delete updated[id];
         return updated;
       });
-      
+
       toast.success(`Stock ${delta > 0 ? "increased" : "decreased"} successfully!`);
     } catch (e: any) {
       console.error(e);
@@ -182,13 +182,13 @@ const Stock = () => {
       toast.error('Please enter a quantity');
       return;
     }
-    
+
     const delta = parseInt(adjustmentValue, 10);
     if (isNaN(delta) || delta === 0) {
       toast.error('Please enter a valid non-zero number');
       return;
     }
-    
+
     updateQuantity(id, delta);
   };
 
@@ -263,12 +263,12 @@ const Stock = () => {
                 const stockValue = Number(getFieldValue(product, 'stock') || 0);
                 const status = getStockStatus(stockValue);
                 const adjustmentValue = stockAdjustments[product.id] || '';
-                
+
                 return (
                   <TableRow key={product.id} className="hover:bg-secondary/50 transition-all duration-200">
                     {visibleFields.map(field => {
                       const value = getFieldValue(product, field.fieldKey);
-                      
+
                       return (
                         <TableCell key={field.fieldKey}>
                           {(() => {
@@ -331,7 +331,7 @@ const Stock = () => {
                               return value !== null && value !== undefined && value !== '' ? String(value) : '-';
                             }
                           })()}
-                        </TableCell>
+                    </TableCell>
                       );
                     })}
                     <TableCell>

@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         const sessionPromise = supabase.auth.getSession();
-        
+
         let sessionResult;
         try {
           sessionResult = await Promise.race([
@@ -208,15 +208,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const result = await Promise.race([userQueryPromise, timeoutPromise]);
             clearTimeout(timeoutId);
+            // Check if result has error property (Supabase query result structure)
+            if (result && typeof result === 'object' && 'error' in result) {
+              return result;
+            }
+            // If no error, return the result
             return result;
           } catch (raceError: any) {
             clearTimeout(timeoutId);
             if (raceError?.message?.includes('timeout')) {
               // If timeout, return error to use fallback
-              return { data: null, error: { code: 'TIMEOUT' } };
+              return { data: null, error: { code: 'TIMEOUT', message: 'User query timeout' } };
             }
-            // Return the actual error from the query
-            return { data: null, error: raceError };
+            // Return the actual error from the query in Supabase format
+            if (raceError && typeof raceError === 'object' && 'error' in raceError) {
+              return raceError;
+            }
+            return { data: null, error: raceError || { code: 'UNKNOWN', message: 'Unknown error' } };
           }
         };
 
@@ -232,27 +240,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-      // If user doesn't exist or query timed out, try once more immediately (no delay)
-      if (userError?.code === 'PGRST116' || userError?.code === 'TIMEOUT') {
-        // Try again immediately without delay
-        const { data: retryUserData, error: retryError } = await supabase
-          .from('users')
-          .select('id, email, username, role')
-          .eq('id', data.user.id)
-          .single();
+      // If user doesn't exist or query failed, try once more immediately (no delay)
+      // This handles cases where user might be created by trigger or RLS policy
+      if (!userData || userError) {
+        try {
+          // Try again immediately without delay
+          const { data: retryUserData, error: retryError } = await supabase
+            .from('users')
+            .select('id, email, username, role')
+            .eq('id', data.user.id)
+            .single();
 
-        if (retryUserData && !retryError) {
-          setUser({
-            id: retryUserData.id,
-            email: retryUserData.email,
-            username: retryUserData.username,
-            role: retryUserData.role
-          });
-          return;
+          if (retryUserData && !retryError) {
+            setUser({
+              id: retryUserData.id,
+              email: retryUserData.email,
+              username: retryUserData.username,
+              role: retryUserData.role
+            });
+            return;
+          }
+        } catch (retryErr) {
+          // If retry also fails, continue to fallback
+          console.warn('Retry user query failed:', retryErr);
         }
 
-        // If still not found, use fallback from auth data
-        // This allows login to proceed even if users table query fails
+        // Always use fallback from auth data if users table query fails
+        // This allows login to proceed even if users table is unavailable
         const fallbackUsername = data.user.email?.split('@')[0] || 'user';
         setUser({
           id: data.user.id,
@@ -262,8 +276,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         return;
       }
-
-      throw new Error('User profile not found. Please contact support.');
     } catch (error: any) {
       // Handle timeout errors specifically
       if (error?.message?.includes('timeout') || error?.message?.includes('Failed to fetch')) {
