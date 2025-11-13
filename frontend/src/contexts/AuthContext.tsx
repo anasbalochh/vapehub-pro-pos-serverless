@@ -192,44 +192,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error('Please confirm your email before logging in. Check your email for the confirmation link.');
         }
 
-        // Get user details from our users table
-        const { data: userData, error: userError } = await supabase
+        // Get user details from our users table with timeout (3 seconds max)
+        const getUserData = async (): Promise<any> => {
+          let timeoutId: NodeJS.Timeout;
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('User query timeout')), 3000);
+          });
+
+          const userQueryPromise = supabase
+            .from('users')
+            .select('id, email, username, role')
+            .eq('id', data.user.id)
+            .single();
+
+          try {
+            const result = await Promise.race([userQueryPromise, timeoutPromise]);
+            clearTimeout(timeoutId);
+            return result;
+          } catch (raceError: any) {
+            clearTimeout(timeoutId);
+            if (raceError?.message?.includes('timeout')) {
+              // If timeout, return error to use fallback
+              return { data: null, error: { code: 'TIMEOUT' } };
+            }
+            // Return the actual error from the query
+            return { data: null, error: raceError };
+          }
+        };
+
+        const { data: userData, error: userError } = await getUserData();
+
+        if (userData && !userError) {
+          setUser({
+            id: userData.id,
+            email: userData.email,
+            username: userData.username,
+            role: userData.role
+          });
+          return;
+        }
+
+      // If user doesn't exist or query timed out, try once more immediately (no delay)
+      if (userError?.code === 'PGRST116' || userError?.code === 'TIMEOUT') {
+        // Try again immediately without delay
+        const { data: retryUserData, error: retryError } = await supabase
           .from('users')
           .select('id, email, username, role')
           .eq('id', data.user.id)
           .single();
 
-        if (userData && !userError) {
+        if (retryUserData && !retryError) {
+          setUser({
+            id: retryUserData.id,
+            email: retryUserData.email,
+            username: retryUserData.username,
+            role: retryUserData.role
+          });
+          return;
+        }
+
+        // If still not found, use fallback from auth data
+        // This allows login to proceed even if users table query fails
+        const fallbackUsername = data.user.email?.split('@')[0] || 'user';
         setUser({
-            id: userData.id,
-            email: userData.email,
-            username: userData.username,
-            role: userData.role
+          id: data.user.id,
+          email: data.user.email || sanitizedEmail,
+          username: fallbackUsername,
+          role: 'user'
         });
         return;
       }
-
-      // If user doesn't exist, try to create them (might be created by trigger)
-          if (userError?.code === 'PGRST116') {
-        // Wait a moment for trigger to create user
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-                const { data: retryUserData } = await supabase
-                  .from('users')
-                  .select('id, email, username, role')
-                  .eq('id', data.user.id)
-                  .single();
-
-                if (retryUserData) {
-          setUser({
-                    id: retryUserData.id,
-                    email: retryUserData.email,
-                    username: retryUserData.username,
-                    role: retryUserData.role
-          });
-          return;
-                }
-              }
 
       throw new Error('User profile not found. Please contact support.');
     } catch (error: any) {

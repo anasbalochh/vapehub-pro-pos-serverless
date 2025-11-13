@@ -106,18 +106,18 @@ if (config) {
     const dummyUrl = 'https://dummy.supabase.co';
     const dummyKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1bW15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTIwMDAsImV4cCI6MTk2MDc2ODAwMH0.dummy';
     supabaseClient = createClient(dummyUrl, dummyKey);
-    
+
     // Override methods to throw helpful errors at runtime
     const configError = new Error(
         'Supabase configuration is missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file and restart the server.'
     );
-    
+
     // Wrap the client methods to throw errors
     const originalFrom = supabaseClient.from.bind(supabaseClient);
     supabaseClient.from = ((table: string) => {
         throw configError;
     }) as any;
-    
+
     const originalAuth = supabaseClient.auth;
     supabaseClient.auth = new Proxy(originalAuth, {
         get(_target, prop) {
