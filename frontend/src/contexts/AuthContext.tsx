@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { ReactNode, createContext, useContext, useEffect, useState } from 'react';
+import { ReactNode, createContext, useContext, useEffect, useState, useRef } from 'react';
 
 interface User {
   id: string;
@@ -22,11 +22,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Lock to prevent concurrent auth operations - use ref to persist across renders
+  const authLockRef = useRef(false);
+  const isInitialCheckRef = useRef(true);
 
   useEffect(() => {
     let mounted = true;
 
     const checkAuth = async () => {
+      // Prevent concurrent auth operations
+      if (authLockRef.current) {
+        console.log('Auth: Operation already in progress, skipping...');
+        return;
+      }
+      
+      authLockRef.current = true;
+      
       try {
         console.log('Auth: Checking existing session...');
 
@@ -92,49 +104,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('Auth: Setting isLoading to false');
           setIsLoading(false);
         }
+        authLockRef.current = false;
       }
     };
 
     checkAuth();
 
-        // Listen for auth changes
+        // Listen for auth changes - but skip if it's the initial check to avoid race conditions
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
+      
+      // Skip initial TOKEN_REFRESHED event to avoid race with checkAuth
+      if (isInitialCheckRef.current && event === 'TOKEN_REFRESHED') {
+        console.log('Auth: Skipping initial TOKEN_REFRESHED event');
+        return;
+      }
+      
+      // Prevent concurrent operations
+      if (authLockRef.current) {
+        console.log('Auth: Operation in progress, skipping onAuthStateChange');
+        return;
+      }
+      
+      authLockRef.current = true;
 
-          if (event === 'SIGNED_IN' && session?.user) {
-        console.log('Auth: SIGNED_IN event, user ID:', session.user.id);
-        let userData = null;
-        try {
-          const { data: dbUser, error: userError } = await supabase
-                .from('users')
-                .select('id, email, username, role')
-                .eq('id', session.user.id)
-                .single();
+      try {
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log('Auth: SIGNED_IN event, user ID:', session.user.id);
+          let userData = null;
+          try {
+            const { data: dbUser, error: userError } = await supabase
+                  .from('users')
+                  .select('id, email, username, role')
+                  .eq('id', session.user.id)
+                  .single();
 
-          if (dbUser && !userError) {
-            userData = dbUser;
-            console.log('Auth: User found in database via onAuthStateChange');
-          } else {
-            console.warn('Auth: User query returned error:', userError?.code || userError?.message || 'Unknown error');
+            if (dbUser && !userError) {
+              userData = dbUser;
+              console.log('Auth: User found in database via onAuthStateChange');
+            } else {
+              console.warn('Auth: User query returned error:', userError?.code || userError?.message || 'Unknown error');
+            }
+          } catch (err: any) {
+            console.warn('Auth: Failed to fetch user data in onAuthStateChange, using fallback:', err?.message || 'Unknown error');
           }
-        } catch (err: any) {
-          console.warn('Auth: Failed to fetch user data in onAuthStateChange, using fallback:', err?.message || 'Unknown error');
-        }
 
-        // Always set user - use database data if available, otherwise use fallback
-        const finalUser = userData || {
-          id: session.user.id,
-          email: session.user.email || '',
-          username: session.user.email?.split('@')[0] || 'user',
-          role: 'user'
-        };
+          // Always set user - use database data if available, otherwise use fallback
+          if (mounted) {
+            const finalUser = userData || {
+              id: session.user.id,
+              email: session.user.email || '',
+              username: session.user.email?.split('@')[0] || 'user',
+              role: 'user'
+            };
 
-        console.log('Auth: Setting user state via onAuthStateChange', { id: finalUser.id, email: finalUser.email });
-        setUser(finalUser);
-          } else if (event === 'SIGNED_OUT') {
-            console.log('Auth: SIGNED_OUT event');
+            console.log('Auth: Setting user state via onAuthStateChange', { id: finalUser.id, email: finalUser.email });
+            setUser(finalUser);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          console.log('Auth: SIGNED_OUT event');
+          if (mounted) {
             setUser(null);
           }
+        }
+      } finally {
+        authLockRef.current = false;
+        isInitialCheckRef.current = false;
+      }
         });
 
     return () => {

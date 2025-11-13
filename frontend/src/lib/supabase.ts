@@ -99,7 +99,9 @@ if (config) {
                 persistSession: true,
                 detectSessionInUrl: true,
                 storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-                storageKey: 'supabase.auth.token'
+                storageKey: 'supabase.auth.token',
+                // Disable flow type to prevent write conflicts
+                flowType: 'pkce'
             }
             // Removed custom fetch handler - let Supabase handle requests natively
             // This prevents "write after end" errors
