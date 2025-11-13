@@ -3,13 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 // Supabase configuration - MUST be set via environment variables
 // Vite automatically loads .env files, but variables must be prefixed with VITE_
 
-// Debug: Log ALL environment variables to see what's available
-if (import.meta.env.DEV) {
-    console.log('🔍 DEBUG: All import.meta.env keys:', Object.keys(import.meta.env));
-    console.log('🔍 DEBUG: import.meta.env.MODE:', import.meta.env.MODE);
-    console.log('🔍 DEBUG: import.meta.env.DEV:', import.meta.env.DEV);
-    console.log('🔍 DEBUG: import.meta.env.PROD:', import.meta.env.PROD);
-}
+// Environment variables are loaded by Vite automatically
 
 // Try multiple ways to get the environment variables
 const supabaseUrl = (
@@ -24,36 +18,10 @@ const supabaseKey = (
     ''
 )?.trim();
 
-// Debug: Log all VITE_ prefixed env vars (in development only)
-if (import.meta.env.DEV) {
-    const viteEnvVars = Object.keys(import.meta.env)
-        .filter(key => key.startsWith('VITE_'))
-        .reduce((obj, key) => {
-            const value = import.meta.env[key];
-            obj[key] = value ? (typeof value === 'string' && value.length > 0 ? '***SET***' : 'EMPTY') : 'MISSING';
-            return obj;
-        }, {} as Record<string, string>);
-    console.log('🔍 Vite environment variables (VITE_*):', viteEnvVars);
-    console.log('🔍 Raw VITE_SUPABASE_URL value:', import.meta.env.VITE_SUPABASE_URL);
-    console.log('🔍 Raw VITE_SUPABASE_ANON_KEY value:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET (hidden)' : 'MISSING');
-
-    // Additional debug: Check if .env file might be in wrong location
-    if (!supabaseUrl || !supabaseKey) {
-        console.error('⚠️⚠️⚠️ ENVIRONMENT VARIABLES NOT LOADED ⚠️⚠️⚠️');
-        console.error('Current working directory check:');
-        console.error('1. .env file MUST be in: frontend/.env (same folder as vite.config.ts)');
-        console.error('2. Variables MUST be named: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
-        console.error('3. You MUST RESTART the dev server (stop with Ctrl+C, then npm run dev)');
-        console.error('4. No spaces around = sign: VITE_SUPABASE_URL=https://...');
-        console.error('5. Clear Vite cache: Remove-Item -Recurse -Force node_modules\.vite');
-        console.error('6. Check terminal output when starting dev server for: "🔍 Vite Config - Environment Variables Check"');
-    }
-}
-
-// Debug: Check what we actually got (without exposing the full key)
-if (import.meta.env.DEV) {
-    console.log('Supabase URL:', supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING');
-    console.log('Supabase Key:', supabaseKey ? `${supabaseKey.substring(0, 20)}...` : 'MISSING');
+// Check if environment variables are missing (only log error, no excessive debug)
+if ((!supabaseUrl || !supabaseKey) && import.meta.env.DEV) {
+    console.error('⚠️ Supabase environment variables not found!');
+    console.error('Please create frontend/.env with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
 }
 
 // Helper function to validate and get configuration
@@ -121,15 +89,18 @@ const config = getSupabaseConfig();
 let supabaseClient: ReturnType<typeof createClient>;
 
 if (config) {
-    // Valid configuration - create normal client
+    // Valid configuration - create normal client with timeout settings
     supabaseClient = createClient(config.url, config.key, {
         auth: {
             autoRefreshToken: true,
             persistSession: true,
             detectSessionInUrl: true,
             // Handle email confirmation redirects
-            redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/confirm` : undefined
-        }
+            redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/confirm` : undefined,
+            // Add timeout for auth requests (30 seconds)
+            storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+            storageKey: 'supabase.auth.token'
+        },
     });
 } else {
     // Invalid configuration - create a proxy that throws helpful errors

@@ -23,256 +23,162 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const checkAuth = async () => {
       try {
-        // Check if we have a valid session in Supabase
         const { data: { session }, error } = await supabase.auth.getSession();
 
-        if (session && session.user) {
-          // Get user details from our users table using the Supabase user ID
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('id, email, username, role')
-            .eq('id', session.user.id)
-            .single();
+        if (error || !session?.user) {
+          setIsLoading(false);
+          return;
+        }
 
-          if (userData && !userError) {
-            const user = {
-              id: userData.id,
-              email: userData.email,
-              username: userData.username,
-              role: userData.role
-            };
-            setUser(user);
-          } else {
-            // If user doesn't exist in our users table, create them
-            if (userError?.code === 'PGRST116') {
-              try {
-                const { data: newUserData, error: createError } = await supabase
-                  .from('users')
-                  .insert([{
-                    id: session.user.id,
-                    email: session.user.email || '',
-                    username: session.user.email?.split('@')[0] || 'user',
-                    role: 'user',
-                    is_active: true,
-                    theme_preference: 'light'
-                  }])
-                  .select()
-                  .single();
+        // Get user details from our users table
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id, email, username, role')
+          .eq('id', session.user.id)
+          .single();
 
-                if (newUserData && !createError) {
-                  const user = {
-                    id: newUserData.id,
-                    email: newUserData.email,
-                    username: newUserData.username,
-                    role: newUserData.role
-                  };
-                  setUser(user);
-                }
-              } catch (createError) {
-                // Silently handle error - user will need to sign up properly
-              }
-            }
-          }
+        if (mounted && userData) {
+          setUser({
+            id: userData.id,
+            email: userData.email,
+            username: userData.username,
+            role: userData.role
+          });
         }
       } catch (error) {
-        // Silently handle auth check errors
+        // Silently handle errors
       } finally {
-        setIsLoading(false);
-
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          if (event === 'SIGNED_IN' && session?.user) {
-            // Get user details from our users table
-            const { data: userData, error: userError } = await supabase
-              .from('users')
-              .select('id, email, username, role')
-              .eq('id', session.user.id)
-              .single();
-
-            if (userData && !userError) {
-              const user = {
-                id: userData.id,
-                email: userData.email,
-                username: userData.username,
-                role: userData.role
-              };
-              setUser(user);
-            } else {
-              // If user doesn't exist in our users table, create them
-              if (userError?.code === 'PGRST116') {
-                try {
-                  const { data: newUserData, error: createError } = await supabase
-                    .from('users')
-                    .insert([{
-                      id: session.user.id,
-                      email: session.user.email || '',
-                      username: session.user.email?.split('@')[0] || 'user',
-                      role: 'user',
-                      is_active: true,
-                      theme_preference: 'light'
-                    }])
-                    .select()
-                    .single();
-
-                  if (newUserData && !createError) {
-                    const user = {
-                      id: newUserData.id,
-                      email: newUserData.email,
-                      username: newUserData.username,
-                      role: newUserData.role
-                    };
-                    setUser(user);
-                  }
-                } catch (createError) {
-                  // Silently handle error
-                }
-              }
-            }
-          } else if (event === 'SIGNED_OUT') {
-            setUser(null);
-          }
-        });
-
-        return () => subscription.unsubscribe();
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id, email, username, role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (userData) {
+          setUser({
+            id: userData.id,
+            email: userData.email,
+            username: userData.username,
+            role: userData.role
+          });
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
+    // Validate input
+    if (!email || !password) {
+      throw new Error('Email and password are required.');
+    }
+
+    // Sanitize email
+    const sanitizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
+      throw new Error('Invalid email format.');
+    }
+
     try {
-      // Validate input
-      if (!email || !password) {
-        throw new Error('Email and password are required.');
-      }
-
-      // Sanitize email
-      const sanitizedEmail = email.trim().toLowerCase();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
-        throw new Error('Invalid email format.');
-      }
-
-      // Use Supabase Auth with proper email format
-      // If configuration is missing, the proxy will throw an error
+      // Use Supabase Auth with timeout handling
       const { data, error } = await supabase.auth.signInWithPassword({
         email: sanitizedEmail,
         password: password
       });
 
       if (error) {
-        // Handle configuration errors
-        if (error.message.includes('configuration is missing') || error.message.includes('Supabase configuration')) {
-          throw new Error('Supabase configuration is missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file and restart the server.');
+        // Handle network/timeout errors
+        if (error.message.includes('timeout') || error.message.includes('Failed to fetch') || error.message.includes('network')) {
+          throw new Error('Connection timeout. Please check your internet connection and try again.');
         }
-        // Handle email confirmation error specifically
+        // Handle email confirmation error
         if (error.message.includes('Email not confirmed') || error.message.includes('unconfirmed')) {
           throw new Error('Please check your email and click the confirmation link before logging in.');
         }
-        // Handle invalid credentials - generic message for security
+        // Handle invalid credentials
         if (error.message.includes('Invalid login credentials')) {
           throw new Error('Invalid email or password.');
         }
+        throw new Error(error.message || 'Login failed. Please try again.');
+      }
+
+      if (!data?.user) {
         throw new Error('Login failed. Please try again.');
       }
 
-      if (data.user) {
-        // Check if email is confirmed
-        if (!data.user.email_confirmed_at) {
-          throw new Error('Please confirm your email before logging in. Check your email for the confirmation link.');
-        }
+      // Check if email is confirmed
+      if (!data.user.email_confirmed_at) {
+        throw new Error('Please confirm your email before logging in. Check your email for the confirmation link.');
+      }
 
-        // Get user details from our users table
-        const { data: userData, error: userError } = await supabase
+      // Get user details from our users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email, username, role')
+        .eq('id', data.user.id)
+        .single();
+
+      if (userData && !userError) {
+        setUser({
+          id: userData.id,
+          email: userData.email,
+          username: userData.username,
+          role: userData.role
+        });
+        return;
+      }
+
+      // If user doesn't exist, try to create them (might be created by trigger)
+      if (userError?.code === 'PGRST116') {
+        // Wait a moment for trigger to create user
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const { data: retryUserData } = await supabase
           .from('users')
           .select('id, email, username, role')
           .eq('id', data.user.id)
           .single();
 
-        if (userData && !userError) {
-          const user = {
-            id: userData.id,
-            email: userData.email,
-            username: userData.username,
-            role: userData.role
-          };
-
-          setUser(user);
-        } else {
-          // If user doesn't exist in our users table, create them
-          // Now that email is confirmed, RLS should allow this
-          if (userError?.code === 'PGRST116') {
-            try {
-              const { data: newUserData, error: createError } = await supabase
-                .from('users')
-                .insert([{
-                  id: data.user.id,
-                  email: data.user.email || sanitizedEmail,
-                  username: data.user.email?.split('@')[0] || sanitizedEmail.split('@')[0],
-                  role: 'user',
-                  is_active: true,
-                  theme_preference: 'light'
-                }])
-                .select()
-                .single();
-
-              if (newUserData && !createError) {
-                const user = {
-                  id: newUserData.id,
-                  email: newUserData.email,
-                  username: newUserData.username,
-                  role: newUserData.role
-                };
-                setUser(user);
-              } else if (createError) {
-                // If creation fails, try to get user again (might have been created by trigger)
-                const { data: retryUserData } = await supabase
-                  .from('users')
-                  .select('id, email, username, role')
-                  .eq('id', data.user.id)
-                  .single();
-
-                if (retryUserData) {
-                  const user = {
-                    id: retryUserData.id,
-                    email: retryUserData.email,
-                    username: retryUserData.username,
-                    role: retryUserData.role
-                  };
-                  setUser(user);
-                } else {
-                  throw new Error('Failed to create user profile. Please try logging in again.');
-                }
-              }
-            } catch (createError: any) {
-              // Try one more time to get user
-              const { data: retryUserData } = await supabase
-                .from('users')
-                .select('id, email, username, role')
-                .eq('id', data.user.id)
-                .single();
-
-              if (retryUserData) {
-                const user = {
-                  id: retryUserData.id,
-                  email: retryUserData.email,
-                  username: retryUserData.username,
-                  role: retryUserData.role
-                };
-                setUser(user);
-              } else {
-                throw new Error('Failed to create user profile. Please contact support.');
-              }
-            }
-          } else {
-            throw new Error('User data not found. Please contact support.');
-          }
+        if (retryUserData) {
+          setUser({
+            id: retryUserData.id,
+            email: retryUserData.email,
+            username: retryUserData.username,
+            role: retryUserData.role
+          });
+          return;
         }
       }
+
+      throw new Error('User profile not found. Please contact support.');
     } catch (error: any) {
-      // Don't expose internal error details
+      // Handle timeout errors specifically
+      if (error?.message?.includes('timeout') || error?.message?.includes('Failed to fetch')) {
+        throw new Error('Connection timeout. Please check your internet connection and try again.');
+      }
       throw error instanceof Error ? error : new Error('Login failed. Please try again.');
     }
   };
