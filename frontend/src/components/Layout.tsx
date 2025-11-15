@@ -51,8 +51,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2" onClick={closeMobileMenu}>
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden ${
-                user?.logoUrl 
-                  ? 'bg-transparent p-1' 
+                user?.logoUrl
+                  ? 'bg-transparent p-1'
                   : 'bg-gradient-to-br from-blue-600 to-blue-800 shadow-md border border-blue-400'
               }`}>
                 <BusinessLogo size="sm" variant="contrast" />

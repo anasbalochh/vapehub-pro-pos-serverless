@@ -56,8 +56,8 @@ const Login = () => {
             <Card className="w-full max-w-md border-slate-700 bg-slate-800/95 backdrop-blur-xl shadow-2xl animate-fade-in relative z-10 transform transition-all duration-300 hover:shadow-blue-500/20">
                 <CardHeader className="text-center space-y-4">
                     <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center shadow-xl animate-scale-in transform transition-transform duration-300 hover:scale-110 ${
-                        user?.logoUrl 
-                          ? 'bg-transparent p-2' 
+                        user?.logoUrl
+                          ? 'bg-transparent p-2'
                           : 'bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400'
                     }`}>
                         <BusinessLogo size="lg" variant="contrast" />

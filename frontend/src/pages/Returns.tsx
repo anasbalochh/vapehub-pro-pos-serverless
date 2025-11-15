@@ -126,14 +126,27 @@ const Returns = () => {
 
   const filteredProducts = products; // No need for client-side filtering since we do server-side filtering
 
-  // Get dynamic visible fields - only show fields that have data in products
+  // Get dynamic visible fields - show all active fields that have data (same logic as Stock and Products pages)
   const visibleFields = useMemo(() => {
-    if (products.length === 0) return [];
+    if (products.length === 0) {
+      // If no products, show all active fields (so user can see what fields are available)
+      return fields
+        .filter(field => field.isActive)
+        .sort((a, b) => a.displayOrder - b.displayOrder);
+    }
 
     // Get all field keys that have data in at least one product
     const fieldsWithData = new Set<string>();
 
     products.forEach(product => {
+      // Check direct product properties
+      ['sku', 'name', 'brand', 'category', 'salePrice', 'retailPrice', 'stock'].forEach(key => {
+        if (product[key] !== null && product[key] !== undefined && product[key] !== '') {
+          fieldsWithData.add(key);
+        }
+      });
+
+      // Check customData
       if (product.customData) {
         Object.keys(product.customData).forEach(key => {
           const value = product.customData[key];
@@ -145,9 +158,16 @@ const Returns = () => {
       }
     });
 
-    // Return fields that are active and have data
+    // Return fields that are active and have data (or are core fields)
+    const coreFields = ['sku', 'name', 'brand', 'category', 'salePrice', 'retailPrice', 'stock'];
     return fields
-      .filter(field => field.isActive && fieldsWithData.has(field.fieldKey))
+      .filter(field => {
+        if (!field.isActive) return false;
+        // Always show core fields
+        if (coreFields.includes(field.fieldKey)) return true;
+        // Show custom fields if they have data
+        return fieldsWithData.has(field.fieldKey);
+      })
       .sort((a, b) => a.displayOrder - b.displayOrder);
   }, [fields, products]);
 

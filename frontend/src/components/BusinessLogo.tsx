@@ -40,7 +40,7 @@ const BusinessLogo: React.FC<BusinessLogoProps> = ({
         src={logoUrl}
         alt={user?.businessName || 'Business Logo'}
         className="max-w-full max-h-full w-auto h-auto"
-        style={{ 
+        style={{
           objectFit: 'contain',
           display: 'block'
         }}
