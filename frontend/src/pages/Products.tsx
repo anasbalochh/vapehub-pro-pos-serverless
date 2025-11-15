@@ -213,6 +213,20 @@ const Products = () => {
     }
   }, [user?.id, loadData]);
 
+  // Reload fields when edit dialog opens to ensure we have the latest fields
+  useEffect(() => {
+    if (isFormOpen && user?.id) {
+      // Reload fields to ensure we have the latest, including newly added ones
+      fieldConfigApi.getUserFields(user.id)
+        .then(response => {
+          setFields(response.data || []);
+        })
+        .catch(error => {
+          console.error('Failed to reload fields when opening edit dialog:', error);
+        });
+    }
+  }, [isFormOpen, user?.id]);
+
   // Handle form submission
   const handleFormSubmit = async (formData: ProductFormData) => {
     if (!user?.id) return;
@@ -338,57 +352,21 @@ const Products = () => {
       const productsResponse = await dynamicProductsApi.list(user.id, debouncedSearchTerm);
       setProducts(productsResponse.data || []);
 
-      toast.success('Fields updated successfully');
+      toast.success('Fields updated successfully. Please reopen the edit dialog to see new fields.');
     } catch (error: any) {
       console.error('Failed to refresh fields:', error);
       toast.error('Failed to refresh fields');
     }
   };
 
-  // Get visible fields for table display - show all active fields that have data (like POS page)
+  // Get visible fields for table display - show all active fields (including those without data yet)
   const visibleFields = useMemo(() => {
-    if (products.length === 0) {
-      // If no products, show all active fields (so user can see what fields are available)
-      return fields
-        .filter(field => field.isActive)
-        .sort((a, b) => a.displayOrder - b.displayOrder);
-    }
-
-    // Get all field keys that have data in at least one product
-    const fieldsWithData = new Set<string>();
-
-    products.forEach(product => {
-      // Check direct product properties
-      ['sku', 'name', 'brand', 'category', 'salePrice', 'retailPrice', 'stock'].forEach(key => {
-        if (product[key] !== null && product[key] !== undefined && product[key] !== '') {
-          fieldsWithData.add(key);
-        }
-      });
-
-      // Check customData
-      if (product.customData) {
-        Object.keys(product.customData).forEach(key => {
-          const value = product.customData[key];
-          if (value !== null && value !== undefined && value !== '' &&
-              !(Array.isArray(value) && value.length === 0)) {
-            fieldsWithData.add(key);
-          }
-        });
-      }
-    });
-
-    // Return fields that are active and have data (or are core fields)
-    const coreFields = ['sku', 'name', 'brand', 'category', 'salePrice', 'retailPrice', 'stock'];
+    // Always show all active fields, regardless of whether they have data
+    // This allows users to see and input data for all configured fields
     return fields
-      .filter(field => {
-        if (!field.isActive) return false;
-        // Always show core fields
-        if (coreFields.includes(field.fieldKey)) return true;
-        // Show custom fields if they have data
-        return fieldsWithData.has(field.fieldKey);
-      })
+      .filter(field => field.isActive)
       .sort((a, b) => a.displayOrder - b.displayOrder);
-  }, [fields, products]);
+  }, [fields]);
 
   if (isLoading) {
     return (
@@ -442,19 +420,46 @@ const Products = () => {
                             </DialogDescription>
                         </DialogHeader>
               <DynamicProductForm
-                key={`form-${fields.length}-${editingProduct?.id || 'new'}`}
+                key={`form-${fields.length}-${fields.map(f => f.fieldKey).sort().join('-')}-${editingProduct?.id || 'new'}`}
                 fields={fields.filter(f => f.isActive !== false)}
-                initialData={editingProduct ? {
-                  sku: editingProduct.sku || '',
-                  name: editingProduct.name || '',
-                  brand: editingProduct.brand || '',
-                  category: editingProduct.category || '',
-                  salePrice: editingProduct.salePrice || editingProduct.customData?.salePrice || '',
-                  retailPrice: editingProduct.retailPrice || editingProduct.customData?.retailPrice || '',
-                  stock: editingProduct.stock || editingProduct.customData?.stock || '',
-                  // Include ALL custom data fields - this ensures all custom fields are editable
-                  ...(editingProduct.customData || {})
-                } : {}}
+                initialData={editingProduct ? (() => {
+                  // Start with product's existing data
+                  const baseData: ProductFormData = {
+                    sku: editingProduct.sku || '',
+                    name: editingProduct.name || '',
+                    brand: editingProduct.brand || '',
+                    category: editingProduct.category || '',
+                    salePrice: editingProduct.salePrice || editingProduct.customData?.salePrice || '',
+                    retailPrice: editingProduct.retailPrice || editingProduct.customData?.retailPrice || '',
+                    stock: editingProduct.stock || editingProduct.customData?.stock || '',
+                    // Include ALL custom data fields from the product
+                    ...(editingProduct.customData || {})
+                  };
+
+                  // Ensure ALL active fields are included, even if they don't exist in the product yet
+                  // This allows editing products to show newly added fields
+                  const activeFields = fields.filter(f => f.isActive !== false);
+                  activeFields.forEach(field => {
+                    if (field.fieldKey && baseData[field.fieldKey] === undefined) {
+                      // Set default values for fields that don't exist in the product yet
+                      switch (field.fieldType) {
+                        case 'boolean':
+                          baseData[field.fieldKey] = false;
+                          break;
+                        case 'number':
+                          baseData[field.fieldKey] = '';
+                          break;
+                        case 'multiselect':
+                          baseData[field.fieldKey] = [];
+                          break;
+                        default:
+                          baseData[field.fieldKey] = '';
+                      }
+                    }
+                  });
+
+                  return baseData;
+                })() : {}}
                 onSubmit={handleFormSubmit}
                 onCancel={() => {
                   setIsFormOpen(false);

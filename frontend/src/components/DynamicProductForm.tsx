@@ -47,16 +47,19 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
   }, [fields]);
 
   // Initialize form data and date values
+  // This effect ensures ALL active fields are included, even newly added ones
   useEffect(() => {
     const initialFormData: ProductFormData = {};
     const initialDateValues: { [key: string]: Date | undefined } = {};
 
+    // Process ALL sorted fields to ensure every active field is included
     sortedFields.forEach(field => {
       if (!field.fieldKey) {
         return;
       }
 
-      if (initialData[field.fieldKey] !== undefined) {
+      // Check if we have data for this field (from initialData)
+      if (initialData[field.fieldKey] !== undefined && initialData[field.fieldKey] !== null) {
         let value = initialData[field.fieldKey];
 
         // Clean up number fields - remove date strings or invalid formats
@@ -92,7 +95,8 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
           initialDateValues[field.fieldKey] = new Date(initialData[field.fieldKey]);
         }
       } else {
-        // Set default values
+        // Set default values for fields that don't have data yet
+        // This ensures newly added fields always appear in the form
         switch (field.fieldType) {
           case 'boolean':
             initialFormData[field.fieldKey] = false;
@@ -111,7 +115,6 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
 
     setFormData(initialFormData);
     setDateValues(initialDateValues);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortedFields, initialData]);
 
   // Clean up invalid date values in number fields (only on mount/field changes)
@@ -252,7 +255,22 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
 
   // Render field based on type
   const renderField = (field: ProductFieldConfig) => {
-    const value = formData[field.fieldKey];
+    // Safety check - ensure field is valid
+    if (!field || !field.fieldKey) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('renderField: Invalid field passed', field);
+      }
+      return (
+        <Input
+          className="bg-secondary border-border text-foreground"
+          value=""
+          placeholder="Invalid field configuration"
+          disabled
+        />
+      );
+    }
+
+    const value = formData[field.fieldKey] !== undefined ? formData[field.fieldKey] : '';
     const error = errors[field.fieldKey];
 
     const baseInputProps = {
@@ -261,6 +279,17 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
         error && "border-destructive focus:ring-destructive"
       )
     };
+
+    // Log field info for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('renderField:', {
+        fieldKey: field.fieldKey,
+        fieldLabel: field.fieldLabel,
+        fieldType: field.fieldType,
+        value: value,
+        hasValue: value !== undefined && value !== null && value !== ''
+      });
+    }
 
     switch (field.fieldType) {
       case 'text':
@@ -381,6 +410,20 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
         );
 
       case 'select':
+        // If no options, render as text input instead
+        if (!field.fieldOptions || field.fieldOptions.length === 0) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn(`renderField: Select field "${field.fieldKey}" has no options, rendering as text input`);
+          }
+          return (
+            <Input
+              {...baseInputProps}
+              value={value || ''}
+              onChange={(e) => handleFieldChange(field.fieldKey, e.target.value)}
+              placeholder={field.placeholderText || `Enter ${field.fieldLabel?.toLowerCase() || 'value'}`}
+            />
+          );
+        }
         return (
           <Select value={value || ''} onValueChange={(val) => handleFieldChange(field.fieldKey, val)}>
             <SelectTrigger className={cn(baseInputProps.className)}>
@@ -397,6 +440,20 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
         );
 
       case 'multiselect':
+        // If no options, render as text input instead
+        if (!field.fieldOptions || field.fieldOptions.length === 0) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn(`renderField: Multiselect field "${field.fieldKey}" has no options, rendering as text input`);
+          }
+          return (
+            <Input
+              {...baseInputProps}
+              value={value || ''}
+              onChange={(e) => handleFieldChange(field.fieldKey, e.target.value)}
+              placeholder={field.placeholderText || `Enter ${field.fieldLabel?.toLowerCase() || 'value'}`}
+            />
+          );
+        }
         const selectedValues = Array.isArray(value) ? value : [];
         return (
           <div className="space-y-2">
@@ -466,6 +523,11 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
         );
 
       default:
+        // Default case: render as text input for any unknown field type
+        // This ensures EVERY field gets an input, even if fieldType is missing or invalid
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`renderField: Unknown fieldType "${field.fieldType}" for field "${field.fieldKey}", rendering as text input`);
+        }
         return (
           <Input
             {...baseInputProps}
@@ -618,11 +680,32 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
 
           {/* Custom Fields Section - Always show if there are custom fields */}
           {(() => {
-            const customFields = sortedFields.filter(field =>
-              !['sku', 'name', 'brand', 'category', 'salePrice', 'retailPrice', 'stock'].includes(field.fieldKey)
-            );
+            // Filter out core fields to get only custom fields
+            const coreFieldKeys = ['sku', 'name', 'brand', 'category', 'salePrice', 'retailPrice', 'stock'];
+            const customFields = sortedFields.filter(field => {
+              // Include all fields that are not core fields and have valid properties
+              return field &&
+                     field.fieldKey &&
+                     field.fieldKey.trim() !== '' &&
+                     !coreFieldKeys.includes(field.fieldKey) &&
+                     field.isActive !== false;
+            });
+
+            // Debug: Log to help identify issues (only in development)
+            if (process.env.NODE_ENV === 'development') {
+              console.log('DynamicProductForm - Custom Fields Debug:', {
+                totalFields: fields.length,
+                sortedFieldsCount: sortedFields.length,
+                customFieldsCount: customFields.length,
+                customFieldKeys: customFields.map(f => f.fieldKey),
+                customFieldLabels: customFields.map(f => f.fieldLabel),
+                allFieldKeys: sortedFields.map(f => f.fieldKey),
+                allFieldLabels: sortedFields.map(f => f.fieldLabel)
+              });
+            }
 
             // Always show the section if there are custom fields defined
+            // This ensures users can always input data for their custom fields
             if (customFields.length === 0) {
               return null;
             }
@@ -634,27 +717,87 @@ export const DynamicProductForm: React.FC<DynamicProductFormProps> = ({
                 Additional Product Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {customFields.map((field) => (
-                    <div key={field.fieldKey} className="space-y-2">
-                      <Label
-                        htmlFor={field.fieldKey}
-                        className="text-sm font-medium text-foreground"
-                      >
-                        {field.fieldLabel}
-                        {field.isRequired && <span className="text-destructive ml-1">*</span>}
-                      </Label>
+                  {customFields.map((field) => {
+                    // Ensure field has all required properties - if not, skip it
+                    if (!field || !field.fieldKey || !field.fieldLabel) {
+                      if (process.env.NODE_ENV === 'development') {
+                        console.error('DynamicProductForm - Invalid field detected:', field);
+                      }
+                      return null;
+                    }
 
-                      {renderField(field)}
+                    // Ensure field is initialized in formData before rendering
+                    // This prevents issues where field value is undefined
+                    const fieldValue = formData[field.fieldKey] !== undefined
+                      ? formData[field.fieldKey]
+                      : (field.fieldType === 'boolean'
+                          ? false
+                          : field.fieldType === 'multiselect'
+                          ? []
+                          : '');
 
-                      {field.helpText && (
-                        <p className="text-xs text-muted-foreground">{field.helpText}</p>
-                      )}
+                    // Render the field - ensure it always returns something
+                    let fieldInput;
+                    try {
+                      fieldInput = renderField(field);
+                    } catch (error) {
+                      if (process.env.NODE_ENV === 'development') {
+                        console.error('Error rendering field:', field.fieldKey, error);
+                      }
+                      // Fallback to text input if rendering fails
+                      fieldInput = (
+                        <Input
+                          className="bg-secondary border-border text-foreground"
+                          value={fieldValue || ''}
+                          onChange={(e) => handleFieldChange(field.fieldKey, e.target.value)}
+                          placeholder={`Enter ${field.fieldLabel?.toLowerCase() || 'value'}`}
+                        />
+                      );
+                    }
 
-                      {errors[field.fieldKey] && (
-                        <p className="text-sm text-destructive">{errors[field.fieldKey]}</p>
-                      )}
-                    </div>
-                  ))}
+                    // Final safety check - ensure we always have a valid input
+                    if (!fieldInput || (typeof fieldInput === 'object' && !fieldInput.type)) {
+                      if (process.env.NODE_ENV === 'development') {
+                        console.error('renderField returned invalid value for field:', {
+                          fieldKey: field.fieldKey,
+                          fieldLabel: field.fieldLabel,
+                          fieldType: field.fieldType,
+                          returnedValue: fieldInput
+                        });
+                      }
+                      // Force fallback input
+                      fieldInput = (
+                        <Input
+                          className="bg-secondary border-border text-foreground"
+                          value={fieldValue || ''}
+                          onChange={(e) => handleFieldChange(field.fieldKey, e.target.value)}
+                          placeholder={`Enter ${field.fieldLabel?.toLowerCase() || 'value'}`}
+                        />
+                      );
+                    }
+
+                    return (
+                      <div key={field.fieldKey} className="space-y-2">
+                        <Label
+                          htmlFor={field.fieldKey}
+                          className="text-sm font-medium text-foreground"
+                        >
+                          {field.fieldLabel}
+                          {field.isRequired && <span className="text-destructive ml-1">*</span>}
+                        </Label>
+
+                        {fieldInput}
+
+                        {field.helpText && (
+                          <p className="text-xs text-muted-foreground">{field.helpText}</p>
+                        )}
+
+                        {errors[field.fieldKey] && (
+                          <p className="text-sm text-destructive">{errors[field.fieldKey]}</p>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
             );

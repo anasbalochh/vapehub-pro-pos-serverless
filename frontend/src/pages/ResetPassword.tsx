@@ -27,7 +27,7 @@ const ResetPassword = () => {
     // Check if we have the necessary tokens from the URL
     const accessToken = searchParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token');
-    
+
     if (accessToken && refreshToken) {
       // Set the session with the tokens from the email link
       supabase.auth.setSession({
@@ -45,7 +45,7 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!password || !confirmPassword) {
       toast.error("Please fill in all fields");
       return;
@@ -73,7 +73,7 @@ const ResetPassword = () => {
 
       setIsSuccess(true);
       toast.success("Password reset successfully!");
-      
+
       // Redirect to login after 2 seconds
       setTimeout(() => {
         navigate('/login');
@@ -107,7 +107,7 @@ const ResetPassword = () => {
             {isSuccess ? "Password Reset!" : "Reset Password"}
           </CardTitle>
           <CardDescription className="text-muted-foreground animate-slide-up" style={{ animationDelay: '0.1s' }}>
-            {isSuccess 
+            {isSuccess
               ? "Your password has been successfully reset"
               : "Enter your new password below"
             }

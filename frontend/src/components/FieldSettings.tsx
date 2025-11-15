@@ -411,139 +411,7 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
         </div>
       </div>
 
-      {/* Field List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Product Fields</CardTitle>
-          <CardDescription>Drag to reorder, toggle to enable/disable</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="fields">
-              {(provided) => (
-                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                  {fields.filter(field => field.fieldKey).map((field, index) => (
-                    <Draggable key={field.fieldKey} draggableId={field.fieldKey} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          className={`p-4 border rounded-lg bg-card ${snapshot.isDragging ? 'shadow-lg' : ''
-                            }`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div
-                              {...provided.dragHandleProps}
-                              className="cursor-grab hover:cursor-grabbing"
-                            >
-                              <GripVertical className="h-4 w-4 text-muted-foreground" />
-                            </div>
-
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="font-medium">{field.fieldLabel}</h3>
-                                <Badge variant="secondary">{field.fieldType}</Badge>
-                                {field.isRequired && <Badge variant="destructive">Required</Badge>}
-                                {field.isCustom && <Badge variant="outline">Custom</Badge>}
-                              </div>
-
-                              {editingFields[field.fieldKey] ? (
-                                <div className="space-y-2">
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <Input
-                                      value={field.fieldLabel}
-                                      onChange={(e) => setFields(prev => prev.map(f =>
-                                        f.fieldKey === field.fieldKey
-                                          ? { ...f, fieldLabel: e.target.value }
-                                          : f
-                                      ))}
-                                      placeholder="Field Label"
-                                    />
-                                    <Input
-                                      value={field.placeholderText || ''}
-                                      onChange={(e) => setFields(prev => prev.map(f =>
-                                        f.fieldKey === field.fieldKey
-                                          ? { ...f, placeholderText: e.target.value }
-                                          : f
-                                      ))}
-                                      placeholder="Placeholder Text"
-                                    />
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      onClick={() => saveFieldChanges(field.fieldKey, {
-                                        fieldLabel: field.fieldLabel,
-                                        placeholderText: field.placeholderText
-                                      })}
-                                    >
-                                      <Save className="h-3 w-3 mr-1" />
-                                      Save
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => cancelEditing(field.fieldKey)}
-                                    >
-                                      <X className="h-3 w-3 mr-1" />
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-4">
-                                  <div className="flex items-center gap-2">
-                                    <Switch
-                                      checked={field.isActive}
-                                      onCheckedChange={(checked) => toggleFieldActive(field.fieldKey, checked)}
-                                    />
-                                    <Label className="text-sm">Active</Label>
-                                  </div>
-
-                                  <div className="flex items-center gap-2">
-                                    <Switch
-                                      checked={field.isRequired}
-                                      onCheckedChange={(checked) => toggleFieldRequired(field.fieldKey, checked)}
-                                    />
-                                    <Label className="text-sm">Required</Label>
-                                  </div>
-
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => startEditing(field.fieldKey)}
-                                  >
-                                    <Edit className="h-3 w-3 mr-1" />
-                                    Edit
-                                  </Button>
-
-                                  {field.isCustom && (
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => deleteCustomField(field.fieldKey)}
-                                    >
-                                      <Trash2 className="h-3 w-3 mr-1" />
-                                      Delete
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-        </CardContent>
-      </Card>
-
-      {/* Add Custom Field Modal */}
+      {/* Add Custom Field Form - Show at TOP when active */}
       {showAddField && (
         <Card className="border-2 border-primary/20">
           <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
@@ -737,6 +605,138 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
           </CardContent>
         </Card>
       )}
+
+      {/* Field List - Show at BOTTOM */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Product Fields</CardTitle>
+          <CardDescription>Drag to reorder, toggle to enable/disable</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="fields">
+              {(provided) => (
+                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+                  {fields.filter(field => field.fieldKey).map((field, index) => (
+                    <Draggable key={field.fieldKey} draggableId={field.fieldKey} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={`p-4 border rounded-lg bg-card ${snapshot.isDragging ? 'shadow-lg' : ''
+                            }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div
+                              {...provided.dragHandleProps}
+                              className="cursor-grab hover:cursor-grabbing"
+                            >
+                              <GripVertical className="h-4 w-4 text-muted-foreground" />
+                            </div>
+
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-medium">{field.fieldLabel}</h3>
+                                <Badge variant="secondary">{field.fieldType}</Badge>
+                                {field.isRequired && <Badge variant="destructive">Required</Badge>}
+                                {field.isCustom && <Badge variant="outline">Custom</Badge>}
+                              </div>
+
+                              {editingFields[field.fieldKey] ? (
+                                <div className="space-y-2">
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <Input
+                                      value={field.fieldLabel}
+                                      onChange={(e) => setFields(prev => prev.map(f =>
+                                        f.fieldKey === field.fieldKey
+                                          ? { ...f, fieldLabel: e.target.value }
+                                          : f
+                                      ))}
+                                      placeholder="Field Label"
+                                    />
+                                    <Input
+                                      value={field.placeholderText || ''}
+                                      onChange={(e) => setFields(prev => prev.map(f =>
+                                        f.fieldKey === field.fieldKey
+                                          ? { ...f, placeholderText: e.target.value }
+                                          : f
+                                      ))}
+                                      placeholder="Placeholder Text"
+                                    />
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => saveFieldChanges(field.fieldKey, {
+                                        fieldLabel: field.fieldLabel,
+                                        placeholderText: field.placeholderText
+                                      })}
+                                    >
+                                      <Save className="h-3 w-3 mr-1" />
+                                      Save
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => cancelEditing(field.fieldKey)}
+                                    >
+                                      <X className="h-3 w-3 mr-1" />
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-4">
+                                  <div className="flex items-center gap-2">
+                                    <Switch
+                                      checked={field.isActive}
+                                      onCheckedChange={(checked) => toggleFieldActive(field.fieldKey, checked)}
+                                    />
+                                    <Label className="text-sm">Active</Label>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <Switch
+                                      checked={field.isRequired}
+                                      onCheckedChange={(checked) => toggleFieldRequired(field.fieldKey, checked)}
+                                    />
+                                    <Label className="text-sm">Required</Label>
+                                  </div>
+
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => startEditing(field.fieldKey)}
+                                  >
+                                    <Edit className="h-3 w-3 mr-1" />
+                                    Edit
+                                  </Button>
+
+                                  {field.isCustom && (
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => deleteCustomField(field.fieldKey)}
+                                    >
+                                      <Trash2 className="h-3 w-3 mr-1" />
+                                      Delete
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </CardContent>
+      </Card>
     </div>
   );
 };

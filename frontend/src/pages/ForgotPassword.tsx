@@ -20,7 +20,7 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !email.trim()) {
       toast.error("Please enter your email address");
       return;
@@ -74,7 +74,7 @@ const ForgotPassword = () => {
             {emailSent ? "Check Your Email" : "Forgot Password"}
           </CardTitle>
           <CardDescription className="text-muted-foreground animate-slide-up" style={{ animationDelay: '0.1s' }}>
-            {emailSent 
+            {emailSent
               ? "We've sent you a password reset link"
               : "Enter your email to receive a password reset link"
             }
@@ -95,7 +95,7 @@ const ForgotPassword = () => {
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 w-full">
                   <p className="text-xs text-muted-foreground text-center">
-                    Please check your email inbox and click on the reset link. 
+                    Please check your email inbox and click on the reset link.
                     If you don't see the email, check your spam folder.
                   </p>
                 </div>
