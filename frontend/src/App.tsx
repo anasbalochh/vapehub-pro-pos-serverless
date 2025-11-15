@@ -13,6 +13,8 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import CheckEmail from "./pages/CheckEmail";
 import EmailConfirmation from "./pages/EmailConfirmation";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 // Lazy load pages for better code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -111,6 +113,8 @@ const App = () => {
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/check-email" element={<CheckEmail />} />
                 <Route path="/auth/confirm" element={<EmailConfirmation />} />
                 <Route

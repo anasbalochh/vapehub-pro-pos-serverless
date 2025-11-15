@@ -117,6 +117,14 @@ const Login = () => {
                                 </Button>
                             </div>
                         </div>
+                        <div className="flex items-center justify-end">
+                            <Link
+                                to="/forgot-password"
+                                className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors duration-200 underline-offset-4 hover:underline"
+                            >
+                                Forgot Password?
+                            </Link>
+                        </div>
                         <Button
                             type="submit"
                             className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"

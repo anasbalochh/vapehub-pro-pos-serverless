@@ -572,7 +572,7 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
                 <Settings className="h-4 w-4 text-primary" />
                 <h3 className="font-semibold text-sm">Field Information</h3>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="fieldLabel" className="text-sm font-medium">
@@ -601,7 +601,7 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
                     This is the name users will see when filling out the form
                   </p>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="fieldKey" className="text-sm font-medium">
                     Field Name (Internal) <span className="text-destructive">*</span>
@@ -647,7 +647,7 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
                     Choose how users will input data for this field
                   </p>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="placeholderText" className="text-sm font-medium">
                     Hint Text
@@ -688,7 +688,7 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
                 <Settings className="h-4 w-4 text-muted-foreground" />
                 <h3 className="font-semibold text-sm text-muted-foreground">Field Options</h3>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
                 <div className="flex items-center justify-between p-3 bg-background rounded-md border">
                   <div className="space-y-0.5">
@@ -705,7 +705,7 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
                     onCheckedChange={(checked) => setNewField(prev => ({ ...prev, isRequired: checked }))}
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 bg-background rounded-md border">
                   <div className="space-y-0.5">
                     <Label htmlFor="isActive" className="text-sm font-medium cursor-pointer">

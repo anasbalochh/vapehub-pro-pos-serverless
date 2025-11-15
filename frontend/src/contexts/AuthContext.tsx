@@ -17,6 +17,7 @@ interface AuthContextType {
   signup: (email: string, password: string, username: string, businessName: string) => Promise<void>;
   updateBusinessName: (businessName: string) => Promise<void>;
   updateLogo: (logoUrl: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -352,8 +353,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (!user?.id) {
+      throw new Error('User not authenticated');
+    }
+
+    if (!currentPassword || !newPassword) {
+      throw new Error('Both current and new passwords are required');
+    }
+
+    if (newPassword.length < 6) {
+      throw new Error('New password must be at least 6 characters long');
+    }
+
+    // Verify current password by attempting to sign in
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword
+    });
+
+    if (verifyError) {
+      throw new Error('Current password is incorrect');
+    }
+
+    // Update password
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (updateError) {
+      throw new Error(updateError.message || 'Failed to update password');
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup, updateBusinessName, updateLogo, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, signup, updateBusinessName, updateLogo, changePassword, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
