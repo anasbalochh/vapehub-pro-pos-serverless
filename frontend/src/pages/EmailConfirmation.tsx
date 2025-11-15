@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Mail, AlertCircle } from "lucide-react";
+import { CheckCircle2, Mail, AlertCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import VapeHubLogo from "@/components/VapeHubLogo";
 import { toast } from "sonner";
@@ -16,16 +16,48 @@ const EmailConfirmation = () => {
   useEffect(() => {
     const verifyEmail = async () => {
       try {
-        // Supabase automatically handles email confirmation via URL hash
+        // Supabase handles email confirmation via URL hash fragments (#access_token=...)
+        // We need to check the hash and let Supabase process it
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const type = hashParams.get('type');
+
+        // If we have a token in the hash, Supabase needs to process it
+        if (accessToken && type === 'recovery') {
+          // This is a password reset, not email confirmation
+          navigate('/reset-password');
+          return;
+        }
+
+        // Check if there's a confirmation token in the hash
+        if (accessToken) {
+          // Let Supabase process the hash and exchange it for a session
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            console.error('Session error:', sessionError);
+          }
+
+          // Also try to get the user from the URL hash
+          const { data: hashData, error: hashError } = await supabase.auth.getUser();
+          
+          if (hashError) {
+            console.error('Hash processing error:', hashError);
+          }
+
+          // Wait a moment for Supabase to process the hash
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
         // Check for session after Supabase processes the confirmation
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user?.email_confirmed_at) {
           setStatus('success');
-          setMessage('Email confirmed successfully! You can now login.');
-          toast.success('Email confirmed!');
+          setMessage('Your account is confirmed! You can now login.');
+          toast.success('Email confirmed successfully!');
 
-          // Ensure user record exists
+          // Ensure user record exists and is activated
           try {
             const { data: userData } = await supabase
               .from('users')
@@ -34,6 +66,7 @@ const EmailConfirmation = () => {
               .single();
 
             if (!userData) {
+              // Create user record if it doesn't exist
               await supabase.from('users').insert([{
                 id: session.user.id,
                 email: session.user.email || '',
@@ -43,32 +76,44 @@ const EmailConfirmation = () => {
                 is_active: true,
                 theme_preference: 'light'
               }]);
+            } else {
+              // Update user to active if they were created as inactive
+              await supabase
+                .from('users')
+                .update({ is_active: true })
+                .eq('id', session.user.id);
             }
-          } catch {
+          } catch (error) {
+            console.error('Error creating/updating user:', error);
             // User will be created on login if needed
           }
+
+          // Clear the hash from URL
+          window.history.replaceState(null, '', window.location.pathname);
         } else {
-          // Wait a moment for Supabase to process the confirmation
+          // Wait a bit more and retry
           setTimeout(async () => {
             const { data: { session: retrySession } } = await supabase.auth.getSession();
             if (retrySession?.user?.email_confirmed_at) {
               setStatus('success');
-              setMessage('Email confirmed successfully! You can now login.');
-              toast.success('Email confirmed!');
+              setMessage('Your account is confirmed! You can now login.');
+              toast.success('Email confirmed successfully!');
+              window.history.replaceState(null, '', window.location.pathname);
             } else {
               setStatus('error');
               setMessage('Invalid or expired confirmation link. Please try signing up again.');
             }
-          }, 1000);
+          }, 2000);
         }
       } catch (error: any) {
+        console.error('Email confirmation error:', error);
         setStatus('error');
-        setMessage('Failed to verify email. Please try again.');
+        setMessage('Failed to verify email. Please try again or contact support.');
       }
     };
 
     verifyEmail();
-  }, []);
+  }, [navigate]);
 
   const handleLogin = () => {
     navigate('/login');
@@ -111,23 +156,26 @@ const EmailConfirmation = () => {
             )}
 
             {status === 'success' && (
-              <div className="text-center space-y-4 animate-slide-up">
+              <div className="text-center space-y-6 animate-slide-up">
                 <div className="flex justify-center">
                   <div className="rounded-full bg-green-500/20 p-4 animate-scale-in transform transition-transform duration-300 hover:scale-110">
-                    <CheckCircle2 className="h-12 w-12 text-green-400" />
+                    <CheckCircle2 className="h-16 w-16 text-green-400" />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-green-400">
-                    Email Confirmed Successfully!
+                <div className="space-y-3">
+                  <h3 className="text-2xl font-bold text-green-400">
+                    Your Account is Confirmed!
                   </h3>
-                  <p className="text-muted-foreground">{message}</p>
+                  <p className="text-lg text-muted-foreground">
+                    You can now login to your account.
+                  </p>
                 </div>
                 <Button
                   onClick={handleLogin}
-                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] text-lg py-6"
+                  size="lg"
                 >
-                  Go to Login
+                  Go to Login Page
                 </Button>
               </div>
             )}

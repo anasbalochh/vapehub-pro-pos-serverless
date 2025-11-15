@@ -259,6 +259,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Note: Supabase will automatically send a confirmation email if:
     // 1. Email confirmation is enabled in Supabase Dashboard > Authentication > Settings
     // 2. SMTP is configured (or using Supabase's default email service)
+    // 3. Site URL is configured correctly in Supabase Dashboard > Authentication > URL Configuration
+    // Use environment variable for production URL, fallback to current origin
+    const redirectUrl = import.meta.env.VITE_SITE_URL 
+      ? `${import.meta.env.VITE_SITE_URL}/auth/confirm`
+      : `${window.location.origin}/auth/confirm`;
+    
     const { data, error } = await supabase.auth.signUp({
       email: sanitizedEmail,
       password: password,
@@ -267,7 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           username: sanitizedUsername,
           business_name: sanitizedBusinessName
         },
-        emailRedirectTo: `${window.location.origin}/auth/confirm`
+        emailRedirectTo: redirectUrl
       }
     });
 
@@ -283,7 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Email confirmation should be sent automatically by Supabase
       // If it wasn't sent, it might be a configuration issue in Supabase dashboard
       console.log('User created. Confirmation email should be sent to:', sanitizedEmail);
-      
+
       // Verify that user was created (even if unconfirmed)
       if (data.user.id) {
         try {
@@ -326,11 +332,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resendConfirmationEmail = async (email: string) => {
     try {
+      // Use environment variable for production URL, fallback to current origin
+      const redirectUrl = import.meta.env.VITE_SITE_URL 
+        ? `${import.meta.env.VITE_SITE_URL}/auth/confirm`
+        : `${window.location.origin}/auth/confirm`;
+        
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email.trim().toLowerCase(),
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`
+          emailRedirectTo: redirectUrl
         }
       });
 
