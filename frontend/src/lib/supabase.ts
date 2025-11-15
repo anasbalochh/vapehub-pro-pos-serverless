@@ -89,6 +89,12 @@ const config = getSupabaseConfig();
 let supabaseClient: ReturnType<typeof createClient>;
 
 if (config) {
+    // Log Supabase URL (without exposing the key) for debugging
+    if (import.meta.env.DEV) {
+        console.log('🔗 Supabase URL:', config.url);
+        console.log('🔑 Supabase Key:', config.key ? `${config.key.substring(0, 20)}...` : 'MISSING');
+    }
+    
     // Valid configuration - create normal client with timeout settings
     supabaseClient = createClient(config.url, config.key, {
         auth: {

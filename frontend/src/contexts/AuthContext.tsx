@@ -219,6 +219,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('AuthContext: Starting login for', sanitizedEmail);
       
+      // Log Supabase configuration status
+      const supabaseUrl = (supabase as any).supabaseUrl || 'Unknown';
+      console.log('AuthContext: Supabase URL configured:', supabaseUrl ? 'Yes' : 'No');
+      
       // Use Supabase Auth directly without connection test
       // The connection test was causing issues, so we'll let the auth call handle it
       console.log('AuthContext: Calling Supabase signInWithPassword...');
