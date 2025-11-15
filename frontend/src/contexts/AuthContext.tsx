@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   signup: (email: string, password: string, username: string, businessName: string) => Promise<void>;
+  resendConfirmationEmail: (email: string) => Promise<boolean>;
   updateBusinessName: (businessName: string) => Promise<void>;
   updateLogo: (logoUrl: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -255,6 +256,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const sanitizedBusinessName = businessName.trim();
 
     // Create user in Supabase Auth
+    // Note: Supabase will automatically send a confirmation email if:
+    // 1. Email confirmation is enabled in Supabase Dashboard > Authentication > Settings
+    // 2. SMTP is configured (or using Supabase's default email service)
     const { data, error } = await supabase.auth.signUp({
       email: sanitizedEmail,
       password: password,
@@ -268,14 +272,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (error) {
-      if (error.message.includes('already registered')) {
+      if (error.message.includes('already registered') || error.message.includes('already exists')) {
         throw new Error('Email already registered. Please login instead.');
       }
       throw new Error(error.message || 'Signup failed. Please try again.');
     }
 
-    // If user created, try to create user record (will be created after email confirmation)
-    if (data.user) {
+    // Check if email confirmation was sent
+    if (data.user && !data.user.email_confirmed_at) {
+      // Email confirmation should be sent automatically by Supabase
+      // If it wasn't sent, it might be a configuration issue in Supabase dashboard
+      console.log('User created. Confirmation email should be sent to:', sanitizedEmail);
+      
+      // Verify that user was created (even if unconfirmed)
+      if (data.user.id) {
+        try {
+          // Try to create user record (will be activated after email confirmation)
+          await (supabase.from('users') as any).insert([{
+            id: data.user.id,
+            email: sanitizedEmail,
+            username: sanitizedUsername,
+            business_name: sanitizedBusinessName,
+            role: 'user',
+            is_active: false, // Set to false until email is confirmed
+            theme_preference: 'light'
+          }]).catch((err: any) => {
+            // If user already exists or insert fails, that's okay
+            // User will be created/updated after email confirmation
+            console.log('User record creation skipped (will be created after confirmation):', err.message);
+          });
+        } catch (insertError) {
+          // User will be created after email confirmation
+          console.log('User record will be created after email confirmation');
+        }
+      }
+    } else if (data.user && data.user.email_confirmed_at) {
+      // Email already confirmed (shouldn't happen on signup, but handle it)
       try {
         await (supabase.from('users') as any).insert([{
           id: data.user.id,
@@ -287,8 +319,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           theme_preference: 'light'
         }]);
       } catch {
-        // User will be created after email confirmation
+        // User already exists
       }
+    }
+  };
+
+  const resendConfirmationEmail = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim().toLowerCase(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/confirm`
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to resend confirmation email');
+      }
+
+      return true;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to resend confirmation email');
     }
   };
 
@@ -387,7 +439,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup, updateBusinessName, updateLogo, changePassword, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, signup, resendConfirmationEmail, updateBusinessName, updateLogo, changePassword, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
