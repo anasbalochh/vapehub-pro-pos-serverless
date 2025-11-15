@@ -79,7 +79,7 @@ const Login = () => {
                 <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
             </div>
 
-            <Card className="w-full max-w-md border-slate-700 bg-slate-800/95 backdrop-blur-xl shadow-2xl animate-fade-in relative z-10 transform transition-all duration-300 hover:shadow-blue-500/20">
+            <Card className="w-full max-w-md border-slate-700/50 bg-slate-800/80 backdrop-blur-2xl shadow-floating animate-fade-in relative z-10 transform transition-all duration-300 hover:shadow-glow-blue hover:scale-[1.02] card-glass">
                 <CardHeader className="text-center space-y-4">
                     <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-full flex items-center justify-center shadow-xl border-2 border-blue-400 animate-scale-in transform transition-transform duration-300 hover:scale-110">
                         <VapeHubLogo size="lg" variant="contrast" />

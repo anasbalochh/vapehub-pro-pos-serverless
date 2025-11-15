@@ -65,7 +65,7 @@ const Signup = () => {
         <div className="text-center mb-8 animate-fade-in">
           <div className="flex justify-center mb-4 animate-scale-in">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-full flex items-center justify-center shadow-xl border-2 border-blue-400 transform transition-transform duration-300 hover:scale-110">
-              <VapeHubLogo size="lg" variant="contrast" />
+            <VapeHubLogo size="lg" variant="contrast" />
             </div>
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm animate-slide-up">
@@ -76,7 +76,7 @@ const Signup = () => {
           </p>
         </div>
 
-        <Card className="bg-slate-800/95 backdrop-blur-xl border-slate-700 shadow-2xl animate-fade-in transform transition-all duration-300 hover:shadow-blue-500/20" style={{ animationDelay: '0.2s' }}>
+        <Card className="bg-slate-800/80 backdrop-blur-2xl border-slate-700/50 shadow-floating animate-fade-in transform transition-all duration-300 hover:shadow-glow-blue hover:scale-[1.02] card-glass" style={{ animationDelay: '0.2s' }}>
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl text-center text-white">Sign Up</CardTitle>
           </CardHeader>
