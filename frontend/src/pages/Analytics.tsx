@@ -14,7 +14,7 @@ const Analytics = () => {
   // Use React Query for real-time data
   const { data: summaryData } = useQuery({
     queryKey: ['summary', 'analytics', range],
-    queryFn: () => reportsApi.summary(),
+    queryFn: () => reportsApi.summary(range.start || range.end ? range : undefined),
     enabled: !!user?.id,
     staleTime: 1000 * 30, // 30 seconds
     select: (response) => (response as any).data || response,
@@ -22,7 +22,10 @@ const Analytics = () => {
 
   const { data: transactionsData } = useQuery({
     queryKey: ['transactions', 'analytics', range],
-    queryFn: () => reportsApi.transactions({ limit: 200, ...(range.start || range.end ? range : {}) }),
+    queryFn: () => reportsApi.transactions({ 
+      limit: 200, 
+      ...(range.start || range.end ? { start: range.start, end: range.end } : {}) 
+    }),
     enabled: !!user?.id,
     staleTime: 1000 * 30, // 30 seconds
     select: (response) => (response as any).data || response || [],
@@ -44,7 +47,17 @@ const Analytics = () => {
     select: (response) => (response as any).data || response || [],
   });
 
-  const transactions = transactionsData || [];
+  let transactions = (transactionsData || []) as any[];
+
+  // Additional client-side filtering to ensure only transactions within date range are shown
+  if (range.start || range.end) {
+    transactions = transactions.filter((transaction: any) => {
+      const orderDate = new Date(transaction.createdAt || transaction.created_at || transaction.date || new Date()).toISOString().split('T')[0];
+      if (range.start && orderDate < range.start) return false;
+      if (range.end && orderDate > range.end) return false;
+      return true;
+    });
+  }
 
   // Calculate metrics from filtered transactions if date range is active, otherwise use summary
   const hasDateRange = !!(range.start || range.end);

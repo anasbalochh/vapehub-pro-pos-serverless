@@ -45,14 +45,26 @@ const Reports = () => {
 
   const { data: transactionsData } = useQuery({
     queryKey: ['transactions', 'reports', range],
-    queryFn: () => reportsApi.transactions({ ...(range.start || range.end ? range : {}) }),
+    queryFn: () => reportsApi.transactions({ 
+      ...(range.start || range.end ? { start: range.start, end: range.end } : {}) 
+    }),
     enabled: !!user?.id,
     staleTime: 1000 * 30, // 30 seconds
     select: (response) => (response as any).data || response || [],
   });
 
   const summary = summaryData || null;
-  const rows = (transactionsData || []) as OrderRow[];
+  let rows = (transactionsData || []) as OrderRow[];
+
+  // Additional client-side filtering to ensure only transactions within date range are shown
+  if (range.start || range.end) {
+    rows = rows.filter((row) => {
+      const orderDate = new Date(row.createdAt || row.created_at || new Date()).toISOString().split('T')[0];
+      if (range.start && orderDate < range.start) return false;
+      if (range.end && orderDate > range.end) return false;
+      return true;
+    });
+  }
 
   const handleExport = async () => {
     try {

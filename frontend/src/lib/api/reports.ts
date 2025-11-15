@@ -30,12 +30,22 @@ export interface OrderItem {
 
 // Reports API
 export const reportsApi = {
-  async getSummary() {
+  async getSummary(dateRange?: { start?: string; end?: string }) {
     try {
       const user = await getCurrentUser();
       console.log('getSummary - Current user:', user);
-      const orders = await db.getSalesSummary(user.id);
+      let orders = await db.getSalesSummary(user.id);
       console.log('getSummary - Orders from database:', orders);
+
+      // Filter by date range if provided
+      if (dateRange?.start || dateRange?.end) {
+        orders = orders.filter((order: any) => {
+          const orderDate = new Date(order.created_at || order.createdAt || order.date).toISOString().split('T')[0];
+          if (dateRange.start && orderDate < dateRange.start) return false;
+          if (dateRange.end && orderDate > dateRange.end) return false;
+          return true;
+        });
+      }
 
       const sales = orders.filter(o => o.type === 'Sale');
       const refunds = orders.filter(o => o.type === 'Refund');
@@ -68,7 +78,7 @@ export const reportsApi = {
     }
   },
 
-  async getTransactions(limit?: number, offset = 0) {
+  async getTransactions(limit?: number, offset = 0, dateRange?: { start?: string; end?: string }) {
     try {
       const user = await getCurrentUser();
       if (!user?.id) {
@@ -76,7 +86,17 @@ export const reportsApi = {
       }
 
       // Fetch all orders if no limit specified
-      const orders = await db.getOrders(user.id, limit, offset);
+      let orders = await db.getOrders(user.id, limit, offset);
+
+      // Filter by date range if provided
+      if (dateRange?.start || dateRange?.end) {
+        orders = orders.filter((order: any) => {
+          const orderDate = new Date(order.created_at || order.createdAt || order.date).toISOString().split('T')[0];
+          if (dateRange.start && orderDate < dateRange.start) return false;
+          if (dateRange.end && orderDate > dateRange.end) return false;
+          return true;
+        });
+      }
 
       // Ensure we return an array even if there's an issue
       return { data: Array.isArray(orders) ? orders : [] };
@@ -178,9 +198,9 @@ export const reportsApi = {
   },
 
   // Aliases used in pages
-  summary: () => reportsApi.getSummary(),
-  transactions: (params?: { limit?: number; offset?: number }) =>
-    reportsApi.getTransactions(params?.limit, params?.offset),
+  summary: (dateRange?: { start?: string; end?: string }) => reportsApi.getSummary(dateRange),
+  transactions: (params?: { limit?: number; offset?: number; start?: string; end?: string }) =>
+    reportsApi.getTransactions(params?.limit, params?.offset, params?.start || params?.end ? { start: params?.start, end: params?.end } : undefined),
   topProducts: (limit?: number) => reportsApi.getTopProducts(limit),
   salesByCategory: () => reportsApi.getSalesByCategory(),
 };
