@@ -73,13 +73,13 @@ Current values:
         console.error('❌ ERROR: Supabase URL must start with https://');
         console.error('   Your URL:', supabaseUrl);
     }
-    
+
     // Check for common URL mistakes
     if (supabaseUrl.includes('localhost') || supabaseUrl.includes('127.0.0.1')) {
         console.error('❌ ERROR: Supabase URL should not be localhost!');
         console.error('   Use your actual Supabase project URL from the dashboard');
     }
-    
+
     // Validate URL structure
     try {
         const url = new URL(supabaseUrl);

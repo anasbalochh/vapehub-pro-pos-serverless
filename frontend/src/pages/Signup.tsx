@@ -76,7 +76,7 @@ const Signup = () => {
           </p>
         </div>
 
-        <Card className="bg-slate-800/80 backdrop-blur-2xl border-slate-700/50 shadow-floating animate-fade-in transform transition-all duration-300 hover:shadow-glow-blue hover:scale-[1.02] card-glass" style={{ animationDelay: '0.2s' }}>
+        <Card className="bg-slate-800/95 backdrop-blur-xl border-slate-700 shadow-2xl animate-fade-in transform transition-all duration-300 hover:shadow-blue-500/20" style={{ animationDelay: '0.2s' }}>
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl text-center text-white">Sign Up</CardTitle>
           </CardHeader>
