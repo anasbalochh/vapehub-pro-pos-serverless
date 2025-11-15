@@ -9,22 +9,8 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
 
-  // Add timeout to prevent infinite loading (max 20 seconds)
-  const [hasTimedOut, setHasTimedOut] = React.useState(false);
-
-  React.useEffect(() => {
-    if (isLoading) {
-      const timeout = setTimeout(() => {
-        setHasTimedOut(true);
-      }, 20000);
-      return () => clearTimeout(timeout);
-    } else {
-      setHasTimedOut(false);
-    }
-  }, [isLoading]);
-
-  // If loading for too long, proceed anyway
-  if (isLoading && !hasTimedOut) {
+  // Show loading screen while checking auth
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <div className="relative">
@@ -36,6 +22,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
+  // Redirect to login if not authenticated
   if (!user) {
     return <Navigate to="/login" replace />;
   }

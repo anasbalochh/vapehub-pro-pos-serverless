@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error || !session?.user) {
           if (mounted) {
             setIsLoading(false);
@@ -71,29 +71,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     checkAuth();
 
-    // Listen for auth changes
+    // Listen for auth changes (only for external auth events, not manual login)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      if (event === 'SIGNED_IN' && session?.user) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('id, email, username, role')
-          .eq('id', session.user.id)
-          .single() as any;
-
-        if (userData) {
-          setUser({
-            id: userData.id,
-            email: userData.email,
-            username: userData.username,
-            role: userData.role
-          });
-        }
-      } else if (event === 'SIGNED_OUT') {
+      // Only handle SIGNED_OUT here - SIGNED_IN is handled by login function
+      if (event === 'SIGNED_OUT') {
         setUser(null);
+        setIsLoading(false);
       }
-      setIsLoading(false);
+      // Note: SIGNED_IN events are handled by the login function to avoid race conditions
     });
 
     return () => {
@@ -135,24 +122,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('AuthContext: Supabase login error:', error);
         console.error('AuthContext: Error status:', error.status);
         console.error('AuthContext: Error message:', error.message);
-        
+
         // Handle specific error types
         if (error.status === 404) {
           throw new Error('Supabase endpoint not found (404). Please verify your VITE_SUPABASE_URL in the .env file. It should be: https://your-project-id.supabase.co');
         }
-        
+
         if (error.message?.includes('Invalid login credentials') || error.message?.includes('invalid_credentials')) {
           throw new Error('Invalid email or password.');
         }
-        
+
         if (error.message?.includes('Email not confirmed') || error.message?.includes('unconfirmed')) {
           throw new Error('Please check your email and click the confirmation link before logging in.');
         }
-        
+
         if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
           throw new Error('Cannot connect to Supabase. Please check your internet connection and Supabase URL configuration.');
         }
-        
+
         throw new Error(error.message || 'Login failed. Please try again.');
       }
 
@@ -177,21 +164,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single() as any;
 
       if (userData && !userError) {
-        setUser({
+        const user = {
           id: userData.id,
           email: userData.email,
           username: userData.username,
           role: userData.role
-        });
-        console.log('AuthContext: User data set successfully');
+        };
+        setUser(user);
+        setIsLoading(false);
+        console.log('AuthContext: User data set successfully', user);
+        // Wait a moment to ensure state is updated
+        await new Promise(resolve => setTimeout(resolve, 100));
         return;
       }
 
       // If user doesn't exist, create them
       if (userError?.code === 'PGRST116') {
         console.log('AuthContext: User not found in database, creating...');
-        const { data: newUser, error: createError } = await (supabase
-          .from('users')
+        const { data: newUser, error: createError } = await (supabase.from('users') as any)
           .insert([{
             id: data.user.id,
             email: data.user.email || sanitizedEmail,
@@ -201,28 +191,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             theme_preference: 'light'
           }])
           .select()
-          .single() as any);
+          .single();
 
         if (newUser && !createError) {
-          setUser({
+          const user = {
             id: newUser.id,
             email: newUser.email,
             username: newUser.username,
             role: newUser.role
-          });
-          console.log('AuthContext: New user created and set');
+          };
+          setUser(user);
+          setIsLoading(false);
+          console.log('AuthContext: New user created and set', user);
+          // Wait a moment to ensure state is updated
+          await new Promise(resolve => setTimeout(resolve, 100));
           return;
         }
       }
 
       // Fallback: use auth session data
       console.log('AuthContext: Using fallback user data from session');
-      setUser({
+      const user = {
         id: data.user.id,
         email: data.user.email || sanitizedEmail,
         username: data.user.email?.split('@')[0] || 'user',
         role: 'user'
-      });
+      };
+      setUser(user);
+      setIsLoading(false);
+      // Wait a moment to ensure state is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
 
     } catch (error: any) {
       console.error('AuthContext: Login exception:', error);

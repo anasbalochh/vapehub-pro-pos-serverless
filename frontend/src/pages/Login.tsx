@@ -26,7 +26,10 @@ const Login = () => {
         try {
             console.log('Login page: Attempting login for', formData.email);
             await login(formData.email, formData.password);
-            console.log('Login page: Login successful, navigating...');
+            console.log('Login page: Login successful, waiting for state update...');
+            // Wait a bit longer to ensure user state is set and isLoading is false
+            await new Promise(resolve => setTimeout(resolve, 300));
+            console.log('Login page: Navigating to dashboard...');
             toast.success("Login successful!");
             navigate("/", { replace: true });
         } catch (error: any) {
