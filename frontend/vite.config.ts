@@ -1,7 +1,7 @@
 import react from "@vitejs/plugin-react-swc";
 import { componentTagger } from "lovable-tagger";
 import path from "path";
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -38,6 +38,10 @@ export default defineConfig(({ mode }) => {
     },
     // Enable HTTP/2 for faster loading
     http2: true,
+    // Fix 404 on refresh - serve index.html for all routes (SPA fallback)
+    fs: {
+      strict: false,
+    },
     // Optimize pre-bundling
     optimizeDeps: {
       include: [
@@ -50,7 +54,40 @@ export default defineConfig(({ mode }) => {
       exclude: ['@vite/client', '@vite/env'],
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  // Configure preview server for production testing
+  preview: {
+    port: 8080,
+    host: "::",
+  },
+  plugins: [
+    react(),
+    mode === "development" && componentTagger(),
+    // Plugin to handle SPA routing - serve index.html for all routes
+    {
+      name: 'spa-fallback',
+      configureServer(server) {
+        return () => {
+          server.middlewares.use((req, res, next) => {
+            // Skip API routes
+            if (req.url?.startsWith('/api')) {
+              return next();
+            }
+            // Skip static assets (files with extensions like .js, .css, .png, etc.)
+            if (req.url && /\.\w+$/.test(req.url) && !req.url.endsWith('.html')) {
+              return next();
+            }
+            // Skip Vite's internal routes
+            if (req.url?.startsWith('/@') || req.url?.startsWith('/node_modules')) {
+              return next();
+            }
+            // For all other routes (SPA routes), serve index.html
+            req.url = '/index.html';
+            next();
+          });
+        };
+      }
+    } as Plugin
+  ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
