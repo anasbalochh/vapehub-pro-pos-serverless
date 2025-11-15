@@ -50,7 +50,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2" onClick={closeMobileMenu}>
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center shadow-md border border-blue-400 overflow-hidden">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden ${
+                user?.logoUrl 
+                  ? 'bg-transparent p-1' 
+                  : 'bg-gradient-to-br from-blue-600 to-blue-800 shadow-md border border-blue-400'
+              }`}>
                 <BusinessLogo size="sm" variant="contrast" />
               </div>
               <span className="font-bold text-xl bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">

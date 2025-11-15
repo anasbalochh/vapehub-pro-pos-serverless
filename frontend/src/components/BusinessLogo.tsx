@@ -33,14 +33,17 @@ const BusinessLogo: React.FC<BusinessLogoProps> = ({
     return null;
   }
 
-  // If user has a logo, show it
+  // If user has a logo, show it with proper auto-fit
   return (
-    <div className={`${sizeClasses[size]} ${className} flex items-center justify-center overflow-hidden`}>
+    <div className={`${sizeClasses[size]} ${className} flex items-center justify-center overflow-hidden relative p-0.5`}>
       <img
         src={logoUrl}
         alt={user?.businessName || 'Business Logo'}
-        className="w-full h-full object-contain max-w-full max-h-full"
-        style={{ objectFit: 'contain' }}
+        className="max-w-full max-h-full w-auto h-auto"
+        style={{ 
+          objectFit: 'contain',
+          display: 'block'
+        }}
         onError={() => setImageError(true)}
         onLoad={() => setImageError(false)}
       />
