@@ -117,13 +117,18 @@ if (config) {
     }
 
     // Valid configuration - create normal client with timeout settings
+    // Use environment variable for production URL, fallback to current origin
+    const siteUrl = typeof window !== 'undefined' 
+      ? (import.meta.env.VITE_SITE_URL || window.location.origin)
+      : undefined;
+    
     supabaseClient = createClient(config.url, config.key, {
         auth: {
             autoRefreshToken: true,
             persistSession: true,
             detectSessionInUrl: true,
             // Handle email confirmation redirects
-            redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/confirm` : undefined,
+            redirectTo: siteUrl ? `${siteUrl}/auth/confirm` : undefined,
             // Add timeout for auth requests (30 seconds)
             storage: typeof window !== 'undefined' ? window.localStorage : undefined,
             storageKey: 'supabase.auth.token'
