@@ -13,6 +13,7 @@ const Signup = () => {
   const [formData, setFormData] = useState({
     email: "",
     username: "",
+    businessName: "",
     password: "",
     confirmPassword: "",
   });
@@ -40,9 +41,14 @@ const Signup = () => {
       return;
     }
 
+    if (!formData.businessName || formData.businessName.trim().length === 0) {
+      toast.error("Business name is required");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await signup(formData.email, formData.password, formData.username);
+      await signup(formData.email, formData.password, formData.username, formData.businessName);
       toast.success("Account created! Please check your email to confirm.");
       navigate('/check-email');
     } catch (error: any) {
@@ -72,7 +78,7 @@ const Signup = () => {
             Create Your Account
           </h1>
           <p className="text-muted-foreground mt-2 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-            Join vape-hub and start managing your business
+            Create your account and start managing your business
           </p>
         </div>
 
@@ -110,6 +116,24 @@ const Signup = () => {
                   disabled={isLoading}
                   className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 transition-all duration-200"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="businessName" className="text-sm font-medium">Business/Website Name</Label>
+                <Input
+                  id="businessName"
+                  name="businessName"
+                  type="text"
+                  placeholder="Enter your business or website name"
+                  value={formData.businessName}
+                  onChange={handleChange}
+                  required
+                  disabled={isLoading}
+                  className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 transition-all duration-200"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This name will appear throughout your POS system
+                </p>
               </div>
 
               <div className="space-y-2">

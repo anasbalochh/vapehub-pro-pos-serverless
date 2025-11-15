@@ -6,12 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
-import VapeHubLogo from "@/components/VapeHubLogo";
+import BusinessLogo from "@/components/BusinessLogo";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBusinessName } from "@/hooks/useBusinessName";
 
 const Login = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
+    const businessName = useBusinessName();
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -31,13 +33,13 @@ const Login = () => {
             await new Promise(resolve => setTimeout(resolve, 300));
             console.log('Login page: Navigating to dashboard...');
             toast.success("Login successful!");
-            navigate("/", { replace: true });
+                navigate("/", { replace: true });
         } catch (error: any) {
             console.error('Login page: Login error', error);
             const errorMessage = error?.message || "Login failed. Please check your credentials.";
-            toast.error(errorMessage, {
-                duration: 5000,
-            });
+                    toast.error(errorMessage, {
+                        duration: 5000,
+                    });
         } finally {
             setIsLoading(false);
         }
@@ -54,10 +56,10 @@ const Login = () => {
             <Card className="w-full max-w-md border-slate-700 bg-slate-800/95 backdrop-blur-xl shadow-2xl animate-fade-in relative z-10 transform transition-all duration-300 hover:shadow-blue-500/20">
                 <CardHeader className="text-center space-y-4">
                     <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-full flex items-center justify-center shadow-xl border-2 border-blue-400 animate-scale-in transform transition-transform duration-300 hover:scale-110">
-                        <VapeHubLogo size="lg" variant="contrast" />
+                        <BusinessLogo size="lg" variant="contrast" />
                     </div>
                     <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm animate-slide-up">
-                        vape-hub
+                        {businessName}
                     </CardTitle>
                     <p className="text-muted-foreground text-sm animate-slide-up" style={{ animationDelay: '0.1s' }}>
                         Sign in to access your dashboard

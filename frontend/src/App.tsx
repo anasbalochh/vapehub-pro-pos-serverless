@@ -23,6 +23,7 @@ const Reports = lazy(() => import("./pages/Reports"));
 const Returns = lazy(() => import("./pages/Returns"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const PrinterManager = lazy(() => import("./pages/PrinterManager"));
+const Settings = lazy(() => import("./pages/Settings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Optimized QueryClient with better caching and performance
@@ -68,6 +69,7 @@ const IndustrySetup: React.FC<{ userId: string }> = ({ userId }) => {
           <Route path="/returns" element={<PageTransition><Returns /></PageTransition>} />
           <Route path="/analytics" element={<PageTransition><Analytics /></PageTransition>} />
           <Route path="/printer" element={<PageTransition><PrinterManager /></PageTransition>} />
+          <Route path="/settings" element={<PageTransition><Settings /></PageTransition>} />
           <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
         </Routes>
       </Suspense>

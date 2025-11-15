@@ -38,6 +38,7 @@ const EmailConfirmation = () => {
                 id: session.user.id,
                 email: session.user.email || '',
                 username: session.user.user_metadata?.username || session.user.email?.split('@')[0] || 'user',
+                business_name: session.user.user_metadata?.business_name || session.user.email?.split('@')[0] || 'My Business',
                 role: 'user',
                 is_active: true,
                 theme_preference: 'light'

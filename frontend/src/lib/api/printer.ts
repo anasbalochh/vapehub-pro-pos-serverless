@@ -2,23 +2,28 @@ import { db } from '../supabase';
 import { getCurrentUser } from './auth';
 
 // Helper function to format receipt text with proper ESC/POS commands
-const formatReceipt = (data: any) => {
+const formatReceipt = (data: any, businessName: string = 'My Business') => {
   const ESC = '\x1B';
   const GS = '\x1D';
   const lines: string[] = [];
-  
+
   // Initialize printer
   lines.push(ESC + '@'); // Reset printer
-  
+
   // Center align and bold for header
   lines.push(ESC + 'a' + '\x01'); // Center align
   lines.push(ESC + 'E' + '\x01'); // Bold on
   lines.push('================================');
-  lines.push('           VAPE-HUB POS         ');
+  // Format business name to fit receipt width (max 32 chars)
+  const businessNameFormatted = businessName.length > 28
+    ? businessName.substring(0, 28)
+    : businessName;
+  const posText = `${businessNameFormatted.toUpperCase()} POS`.padStart(32).substring(0, 32);
+  lines.push(posText);
   lines.push('================================');
   lines.push(ESC + 'E' + '\x00'); // Bold off
   lines.push(ESC + 'a' + '\x00'); // Left align
-  
+
   lines.push(`Order: ${data.orderNumber}`);
   lines.push(`Date: ${data.date}`);
   lines.push(`Type: ${data.type}`);
@@ -50,11 +55,11 @@ const formatReceipt = (data: any) => {
   lines.push('           purchase!            ');
   lines.push(ESC + 'a' + '\x00'); // Left align
   lines.push('================================');
-  
+
   // Feed paper and cut
   lines.push('\n\n\n'); // Feed 3 lines
   lines.push(GS + 'V' + '\x41' + '\x03'); // Partial cut
-  
+
   return lines.join('\n');
 };
 
@@ -71,46 +76,46 @@ const sendToUsbPrinter = async (deviceAddress: string, data: Uint8Array): Promis
   }
 
   const usb = (navigator as any).usb;
-  
+
   // Parse device address (format: USB{vendorId})
   const vendorIdMatch = deviceAddress.match(/USB(\d+)/);
   if (!vendorIdMatch) {
     throw new Error('Invalid USB device address format');
   }
-  
+
   const vendorId = parseInt(vendorIdMatch[1], 10);
-  
+
   // Request access to the device
   const devices = await usb.getDevices();
   let device = devices.find((d: any) => d.vendorId === vendorId);
-  
+
   if (!device) {
     // Request device if not already granted
     device = await usb.requestDevice({ filters: [{ vendorId }] });
   }
-  
+
   // Open device
   await device.open();
-  
+
   try {
     // Select configuration
     if (device.configuration === null) {
       await device.selectConfiguration(1);
     }
-    
+
     // Claim interface (usually interface 0 for printers)
     await device.claimInterface(0);
-    
+
     try {
       // Send data to printer (bulk transfer to endpoint 1, OUT direction)
       const endpoint = device.configuration.interfaces[0].alternate.endpoints.find(
         (ep: any) => ep.direction === 'out'
       );
-      
+
       if (!endpoint) {
         throw new Error('No output endpoint found on printer');
       }
-      
+
       await device.transferOut(endpoint.endpointNumber, data);
     } finally {
       // Release interface
@@ -126,18 +131,18 @@ const sendToUsbPrinter = async (deviceAddress: string, data: Uint8Array): Promis
 const sendToNetworkPrinter = async (address: string, data: Uint8Array): Promise<void> => {
   const [ip, port] = address.split(':');
   const portNum = parseInt(port, 10);
-  
+
   // Network printing from browser has limitations:
   // 1. Direct TCP connections are not possible from browser
   // 2. CORS prevents direct HTTP connections to printers
   // 3. We need a backend service or browser extension
-  
+
   // Try to use a backend API endpoint if available
   // Otherwise, we'll need to inform the user
   try {
     // Check if we have a backend API endpoint for printing
     const backendUrl = import.meta.env.VITE_API_URL || '';
-    
+
     if (backendUrl) {
       // Try to send print job to backend
       const response = await fetch(`${backendUrl}/api/print`, {
@@ -151,14 +156,14 @@ const sendToNetworkPrinter = async (address: string, data: Uint8Array): Promise<
           type: 'network'
         })
       });
-      
+
       if (!response.ok) {
         throw new Error('Backend print service unavailable');
       }
-      
+
       return; // Success
     }
-    
+
     // No backend available - try direct connection (will likely fail due to CORS)
     // This is a fallback for development/testing
     try {
@@ -171,7 +176,7 @@ const sendToNetworkPrinter = async (address: string, data: Uint8Array): Promise<
         mode: 'no-cors', // Bypass CORS (but we can't verify success)
         signal: AbortSignal.timeout(5000) // 5 second timeout
       });
-      
+
       // With no-cors, we can't check response, so assume success
       // In reality, this may or may not work depending on printer
       return;
@@ -186,7 +191,7 @@ const sendToNetworkPrinter = async (address: string, data: Uint8Array): Promise<
       dataLength: data.length,
       dataPreview: new TextDecoder().decode(data.slice(0, 100))
     });
-    
+
     throw new Error(
       'Network printing requires a backend service or the printer must support HTTP printing. ' +
       'Receipt data has been saved and can be printed manually from the print history.'
@@ -218,7 +223,7 @@ export const printerApi = {
         }
 
         const usb = (navigator as any).usb;
-        
+
         // Parse device address to get vendor ID
         const vendorIdMatch = sanitizedDevice.match(/USB(\d+)/);
         if (!vendorIdMatch) {
@@ -226,7 +231,7 @@ export const printerApi = {
         }
 
         const vendorId = parseInt(vendorIdMatch[1], 10);
-        
+
         // Check if device is already accessible
         let deviceFound = false;
         try {
@@ -269,7 +274,7 @@ export const printerApi = {
         if (!ipRegex.test(sanitizedDevice)) {
           throw new Error('Invalid network address format. Use IP:PORT (e.g., 192.168.1.100:9100)');
         }
-        
+
         // Validate IP ranges
         const [ip, port] = sanitizedDevice.split(':');
         const ipParts = ip.split('.');
@@ -279,7 +284,7 @@ export const printerApi = {
         })) {
           throw new Error('Invalid IP address format.');
         }
-        
+
         const portNum = parseInt(port, 10);
         if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
           throw new Error('Invalid port number. Must be between 1 and 65535.');
@@ -290,13 +295,13 @@ export const printerApi = {
           // Try to connect to the printer (with timeout)
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 3000);
-          
+
           await fetch(`http://${ip}:${portNum}/`, {
             method: 'GET',
             mode: 'no-cors',
             signal: controller.signal
           });
-          
+
           clearTimeout(timeoutId);
         } catch (e: any) {
           // Connection test failed, but we'll still save the config
@@ -355,7 +360,7 @@ export const printerApi = {
       }
 
       const printerConfig = statusResponse.data.config;
-      
+
       // Send a simple test command
       const testText = '\x1B@\x1B\x61\x01TEST PRINT\x1B\x61\x00\n\n\n';
       const testData = convertToEscPos(testText);
@@ -380,8 +385,12 @@ export const printerApi = {
       }
 
       const printerConfig = statusResponse.data.config;
-      
+
       // Create a test receipt
+      // Get business name from user for test receipt
+      const user = await getCurrentUser();
+      const businessName = (user as any)?.business_name || (user as any)?.username || 'My Business';
+
       const testReceiptData = {
         orderNumber: 'TEST-001',
         date: new Date().toLocaleString(),
@@ -396,7 +405,7 @@ export const printerApi = {
         type: 'TEST'
       };
 
-      const receiptText = formatReceipt(testReceiptData);
+      const receiptText = formatReceipt(testReceiptData, businessName);
       const receiptData = convertToEscPos(receiptText);
 
       if (printerConfig.printer_type === 'usb') {
@@ -430,6 +439,7 @@ export const printerApi = {
 
       // Get order details from database
       const user = await getCurrentUser();
+      const businessName = (user as any)?.business_name || (user as any)?.username || 'My Business';
       const orders = await db.getOrders(user.id);
       const order = orders.find(o => (o.id || o._id) === sanitizedOrderId);
 
@@ -458,7 +468,7 @@ export const printerApi = {
       };
 
       // Format receipt text with ESC/POS commands
-      const receiptText = formatReceipt(receiptData);
+      const receiptText = formatReceipt(receiptData, businessName);
       const receiptDataBytes = convertToEscPos(receiptText);
 
       // Send to printer based on type
@@ -477,7 +487,7 @@ export const printerApi = {
         // If actual printing fails, still log the attempt
         // This allows the receipt to be viewed/printed later
         console.warn('Physical print failed, but receipt data saved:', printError.message);
-        
+
         // For network printers, we might need a backend service
         if (printerConfig.printer_type === 'network') {
           throw new Error('Network printing requires a backend service. Receipt data has been saved.');
@@ -496,12 +506,12 @@ export const printerApi = {
         printed_at: printSuccess ? new Date().toISOString() : null
       });
 
-      return { 
-        data: { 
-          message: printSuccess ? 'Receipt printed successfully' : 'Receipt queued for printing', 
-          success: true, 
-          receiptText 
-        } 
+      return {
+        data: {
+          message: printSuccess ? 'Receipt printed successfully' : 'Receipt queued for printing',
+          success: true,
+          receiptText
+        }
       };
     } catch (error: any) {
       // Log failed print job
@@ -541,6 +551,7 @@ export const printerApi = {
 
       // Get return order details from database
       const user = await getCurrentUser();
+      const businessName = (user as any)?.business_name || (user as any)?.username || 'My Business';
       const orders = await db.getOrders(user.id);
       const returnOrder = orders.find(o => (o.id || o._id) === sanitizedReturnId && o.type === 'Refund');
 
@@ -569,7 +580,7 @@ export const printerApi = {
       };
 
       // Format receipt text with ESC/POS commands
-      const receiptText = formatReceipt(receiptData);
+      const receiptText = formatReceipt(receiptData, businessName);
       const receiptDataBytes = convertToEscPos(receiptText);
 
       // Send to printer based on type
@@ -587,7 +598,7 @@ export const printerApi = {
       } catch (printError: any) {
         // If actual printing fails, still log the attempt
         console.warn('Physical print failed, but receipt data saved:', printError.message);
-        
+
         // For network printers, we might need a backend service
         if (printerConfig.printer_type === 'network') {
           throw new Error('Network printing requires a backend service. Receipt data has been saved.');
@@ -606,12 +617,12 @@ export const printerApi = {
         printed_at: printSuccess ? new Date().toISOString() : null
       });
 
-      return { 
-        data: { 
-          message: printSuccess ? 'Return receipt printed successfully' : 'Return receipt queued for printing', 
-          success: true, 
-          receiptText 
-        } 
+      return {
+        data: {
+          message: printSuccess ? 'Return receipt printed successfully' : 'Return receipt queued for printing',
+          success: true,
+          receiptText
+        }
       };
     } catch (error: any) {
       // Log failed print job
@@ -640,10 +651,10 @@ export const printerApi = {
       if (typeof navigator !== 'undefined' && 'usb' in navigator) {
         try {
           const usb = (navigator as any).usb;
-          
+
           // Get already granted devices
           const grantedDevices = await usb.getDevices();
-          
+
           devices.push(...grantedDevices.map((device: any) => ({
             vendorId: device.vendorId.toString(16),
             productId: device.productId.toString(16),
@@ -714,10 +725,10 @@ export const printerApi = {
       }
 
       const usb = (navigator as any).usb;
-      
+
       // Request device - this will show browser's device picker
       // User must select their printer
-      const device = await usb.requestDevice({ 
+      const device = await usb.requestDevice({
         filters: [
           // Common printer vendor IDs (can be expanded)
           { classCode: 7 }, // Printer class

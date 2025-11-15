@@ -17,7 +17,7 @@ export async function getCurrentUser() {
   // Get user details from our users table
   const { data: userData, error: userError } = await supabase
     .from('users')
-    .select('id, email, username, role')
+    .select('id, email, username, role, business_name')
     .eq('id', session.user.id)
     .single();
 
@@ -30,11 +30,12 @@ export async function getCurrentUser() {
           id: session.user.id,
           email: session.user.email || '',
           username: session.user.email?.split('@')[0] || 'user',
+          business_name: session.user.user_metadata?.business_name || session.user.email?.split('@')[0] || 'My Business',
           role: 'user',
           is_active: true,
           theme_preference: 'light'
         }])
-        .select('id, email, username, role')
+        .select('id, email, username, role, business_name')
         .single();
 
       if (newUserData && !createError) {
@@ -45,7 +46,7 @@ export async function getCurrentUser() {
       // This handles race conditions
       const { data: retryUserData } = await supabase
         .from('users')
-        .select('id, email, username, role')
+        .select('id, email, username, role, business_name')
         .eq('id', session.user.id)
         .single();
 

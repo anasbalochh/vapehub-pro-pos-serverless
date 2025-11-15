@@ -6,13 +6,17 @@ interface User {
   email: string;
   username: string;
   role: string;
+  businessName: string;
+  logoUrl?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  signup: (email: string, password: string, username: string) => Promise<void>;
+  signup: (email: string, password: string, username: string, businessName: string) => Promise<void>;
+  updateBusinessName: (businessName: string) => Promise<void>;
+  updateLogo: (logoUrl: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -39,29 +43,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Get user from database
         const { data: userData } = await supabase
-          .from('users')
-          .select('id, email, username, role')
-          .eq('id', session.user.id)
-          .single() as any;
+            .from('users')
+          .select('id, email, username, role, business_name, logo_url')
+            .eq('id', session.user.id)
+            .single() as any;
 
-        if (mounted && userData) {
-          setUser({
-            id: userData.id,
-            email: userData.email,
-            username: userData.username,
-            role: userData.role
+          if (mounted && userData) {
+            setUser({
+                id: userData.id,
+                email: userData.email,
+                username: userData.username,
+            role: userData.role,
+            businessName: userData.business_name || userData.username || 'My Business',
+            logoUrl: userData.logo_url || undefined
           });
         } else if (mounted && session.user) {
           // Fallback: use session data if user not in database
-          setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-            username: session.user.email?.split('@')[0] || 'user',
-            role: 'user'
-          });
+            setUser({
+              id: session.user.id,
+              email: session.user.email || '',
+              username: session.user.email?.split('@')[0] || 'user',
+            role: 'user',
+            businessName: session.user.email?.split('@')[0] || 'My Business'
+            });
         }
       } catch (error: any) {
-        console.warn('Auth check error:', error.message);
+          console.warn('Auth check error:', error.message);
       } finally {
         if (mounted) {
           setIsLoading(false);
@@ -81,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
       // Note: SIGNED_IN events are handled by the login function to avoid race conditions
-    });
+        });
 
     return () => {
       mounted = false;
@@ -90,16 +97,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Validate input
-    if (!email || !password) {
-      throw new Error('Email and password are required.');
-    }
+      // Validate input
+      if (!email || !password) {
+        throw new Error('Email and password are required.');
+      }
 
-    // Sanitize email
-    const sanitizedEmail = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
-      throw new Error('Invalid email format.');
-    }
+      // Sanitize email
+      const sanitizedEmail = email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
+        throw new Error('Invalid email format.');
+      }
 
     try {
       console.log('AuthContext: Starting login for', sanitizedEmail);
@@ -150,42 +157,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('AuthContext: User authenticated, email confirmed:', !!data.user.email_confirmed_at);
 
-      // Check if email is confirmed
-      if (!data.user.email_confirmed_at) {
-        throw new Error('Please confirm your email before logging in. Check your email for the confirmation link.');
-      }
+        // Check if email is confirmed
+        if (!data.user.email_confirmed_at) {
+          throw new Error('Please confirm your email before logging in. Check your email for the confirmation link.');
+        }
 
       // Get user details from database
-      console.log('AuthContext: Fetching user data from database for user ID:', data.user.id);
+          console.log('AuthContext: Fetching user data from database for user ID:', data.user.id);
       const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, email, username, role')
-        .eq('id', data.user.id)
+                .from('users')
+        .select('id, email, username, role, business_name, logo_url')
+                .eq('id', data.user.id)
         .single() as any;
 
-      if (userData && !userError) {
+          if (userData && !userError) {
         const user = {
-          id: userData.id,
-          email: userData.email,
-          username: userData.username,
-          role: userData.role
+                id: userData.id,
+                email: userData.email,
+                username: userData.username,
+          role: userData.role,
+          businessName: userData.business_name || userData.username || 'My Business',
+          logoUrl: userData.logo_url || undefined
         };
         setUser(user);
         setIsLoading(false);
         console.log('AuthContext: User data set successfully', user);
         // Wait a moment to ensure state is updated
         await new Promise(resolve => setTimeout(resolve, 100));
-        return;
-      }
+            return;
+          }
 
       // If user doesn't exist, create them
-      if (userError?.code === 'PGRST116') {
+          if (userError?.code === 'PGRST116') {
         console.log('AuthContext: User not found in database, creating...');
+        const defaultBusinessName = data.user.user_metadata?.business_name || data.user.email?.split('@')[0] || 'My Business';
         const { data: newUser, error: createError } = await (supabase.from('users') as any)
           .insert([{
             id: data.user.id,
             email: data.user.email || sanitizedEmail,
             username: data.user.email?.split('@')[0] || 'user',
+            business_name: defaultBusinessName,
             role: 'user',
             is_active: true,
             theme_preference: 'light'
@@ -198,24 +209,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: newUser.id,
             email: newUser.email,
             username: newUser.username,
-            role: newUser.role
+            role: newUser.role,
+            businessName: newUser.business_name || newUser.username || 'My Business',
+            logoUrl: newUser.logo_url || undefined
           };
           setUser(user);
           setIsLoading(false);
           console.log('AuthContext: New user created and set', user);
           // Wait a moment to ensure state is updated
           await new Promise(resolve => setTimeout(resolve, 100));
-          return;
-        }
-      }
+              return;
+            }
+          }
 
       // Fallback: use auth session data
       console.log('AuthContext: Using fallback user data from session');
       const user = {
-        id: data.user.id,
-        email: data.user.email || sanitizedEmail,
-        username: data.user.email?.split('@')[0] || 'user',
-        role: 'user'
+          id: data.user.id,
+          email: data.user.email || sanitizedEmail,
+          username: data.user.email?.split('@')[0] || 'user',
+        role: 'user',
+        businessName: data.user.user_metadata?.business_name || data.user.email?.split('@')[0] || 'My Business'
       };
       setUser(user);
       setIsLoading(false);
@@ -229,14 +243,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signup = async (email: string, password: string, username: string) => {
+  const signup = async (email: string, password: string, username: string, businessName: string) => {
     // Basic validation
-    if (!email || !password || !username) {
+    if (!email || !password || !username || !businessName) {
       throw new Error('All fields are required.');
     }
 
     const sanitizedEmail = email.trim().toLowerCase();
     const sanitizedUsername = username.trim();
+    const sanitizedBusinessName = businessName.trim();
 
     // Create user in Supabase Auth
     const { data, error } = await supabase.auth.signUp({
@@ -244,7 +259,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: password,
       options: {
         data: {
-          username: sanitizedUsername
+          username: sanitizedUsername,
+          business_name: sanitizedBusinessName
         },
         emailRedirectTo: `${window.location.origin}/auth/confirm`
       }
@@ -264,6 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: data.user.id,
           email: sanitizedEmail,
           username: sanitizedUsername,
+          business_name: sanitizedBusinessName,
           role: 'user',
           is_active: true,
           theme_preference: 'light'
@@ -285,8 +302,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateBusinessName = async (newBusinessName: string) => {
+    if (!user?.id) {
+      throw new Error('User not authenticated');
+    }
+
+    if (!newBusinessName || newBusinessName.trim().length === 0) {
+      throw new Error('Business name cannot be empty');
+    }
+
+    const sanitizedBusinessName = newBusinessName.trim();
+
+    // Update in database
+    const { error } = await (supabase
+      .from('users') as any)
+      .update({ business_name: sanitizedBusinessName })
+      .eq('id', user.id);
+
+    if (error) {
+      throw new Error(error.message || 'Failed to update business name');
+    }
+
+    // Update local state
+    setUser({
+      ...user,
+      businessName: sanitizedBusinessName
+    });
+  };
+
+  const updateLogo = async (logoUrl: string) => {
+    if (!user?.id) {
+      throw new Error('User not authenticated');
+    }
+
+    // Update in database
+    const { error } = await (supabase
+      .from('users') as any)
+      .update({ logo_url: logoUrl || null })
+      .eq('id', user.id);
+
+    if (error) {
+      throw new Error(error.message || 'Failed to update logo');
+    }
+
+    // Update local state
+    setUser({
+      ...user,
+      logoUrl: logoUrl || undefined
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, signup, updateBusinessName, updateLogo, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

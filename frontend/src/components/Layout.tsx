@@ -1,11 +1,12 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Warehouse, ShoppingCart, FileText, RotateCcw, BarChart3, LogOut, User, Printer, Sun, Moon, Menu, X } from "lucide-react";
+import { LayoutDashboard, Package, Warehouse, ShoppingCart, FileText, RotateCcw, BarChart3, LogOut, User, Printer, Sun, Moon, Menu, X, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import VapeHubLogo from "@/components/VapeHubLogo";
+import BusinessLogo from "@/components/BusinessLogo";
 import { useState } from "react";
+import { useBusinessName } from "@/hooks/useBusinessName";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -13,6 +14,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme, isLoading: themeLoading } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const businessName = useBusinessName();
 
   const navItems = [
     { path: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -23,6 +25,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { path: "/returns", icon: RotateCcw, label: "Returns" },
     { path: "/analytics", icon: BarChart3, label: "Analytics" },
     { path: "/printer", icon: Printer, label: "Printer" },
+    { path: "/settings", icon: Settings, label: "Settings" },
   ];
 
   const handleLogout = async () => {
@@ -47,11 +50,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2" onClick={closeMobileMenu}>
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center shadow-md border border-blue-400">
-                <VapeHubLogo size="sm" variant="contrast" />
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center shadow-md border border-blue-400 overflow-hidden">
+                <BusinessLogo size="sm" variant="contrast" />
               </div>
               <span className="font-bold text-xl bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent drop-shadow-sm">
-                vape-hub
+                {businessName}
               </span>
             </Link>
 
