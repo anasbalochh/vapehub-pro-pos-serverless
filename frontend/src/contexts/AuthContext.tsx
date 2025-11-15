@@ -219,33 +219,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('AuthContext: Starting login for', sanitizedEmail);
       
-      // First, test Supabase connection quickly
-      try {
-        const { error: healthError } = await Promise.race([
-          supabase.from('users').select('id').limit(0),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection test timeout')), 5000))
-        ]) as any;
-        
-        if (healthError && !healthError.message?.includes('JWT')) {
-          console.warn('AuthContext: Supabase connection test warning:', healthError.message);
-        }
-      } catch (healthTestError: any) {
-        console.warn('AuthContext: Supabase connection test failed:', healthTestError?.message);
-        // Continue anyway - might be a permissions issue, not a connection issue
-      }
-      
-      // Use Supabase Auth with a reasonable timeout
-      // Increase timeout to 30 seconds to allow for slower connections
-      let timeoutId: NodeJS.Timeout;
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          reject(new Error('Login request timed out after 30 seconds. The server may be slow or unreachable. Please try again.'));
-        }, 30000); // 30 second timeout
-      });
-
+      // Use Supabase Auth directly without connection test
+      // The connection test was causing issues, so we'll let the auth call handle it
       console.log('AuthContext: Calling Supabase signInWithPassword...');
       const startTime = Date.now();
       
+      // Use a longer timeout (45 seconds) to allow for slow connections
+      // Also add AbortController for better timeout handling
+      const controller = new AbortController();
+      let timeoutId: NodeJS.Timeout;
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          controller.abort();
+          reject(new Error('Login request timed out after 45 seconds. Please check your Supabase configuration and internet connection.'));
+        }, 45000); // 45 second timeout
+      });
+
       // Start the Supabase auth call
       const signInPromise = supabase.auth.signInWithPassword({
         email: sanitizedEmail,
@@ -272,11 +262,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           timeoutPromise
         ]);
       } catch (raceError: any) {
+        // Clear timeout
+        if (timeoutId) clearTimeout(timeoutId);
+        
         // If it's our timeout error, throw it
         if (raceError?.message?.includes('timed out')) {
           console.error('AuthContext: Login timeout error');
           throw raceError;
         }
+        
+        // Check for network errors
+        if (raceError?.message?.includes('Failed to fetch') || 
+            raceError?.message?.includes('NetworkError') ||
+            raceError?.code === 'ECONNREFUSED' ||
+            raceError?.name === 'AbortError') {
+          throw new Error('Cannot connect to Supabase server. Please check your internet connection and Supabase configuration.');
+        }
+        
         // Otherwise, it's a Supabase error - log and rethrow it
         console.error('AuthContext: Supabase error during login:', raceError);
         throw raceError;
@@ -321,7 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let userSet = false;
         try {
           console.log('AuthContext: Fetching user data from database for user ID:', data.user.id);
-          
+
           // Add timeout for database query (10 seconds - more reasonable)
           let dbTimeoutId: NodeJS.Timeout;
           const dbTimeout = new Promise<never>((_, reject) => {
