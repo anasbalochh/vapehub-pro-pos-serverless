@@ -256,14 +256,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const sanitizedBusinessName = businessName.trim();
 
     // Create user in Supabase Auth
-    // Note: Supabase will automatically send a confirmation email if:
-    // 1. Email confirmation is enabled in Supabase Dashboard > Authentication > Settings
-    // 2. SMTP is configured (or using Supabase's default email service)
-    // 3. Site URL is configured correctly in Supabase Dashboard > Authentication > URL Configuration
+    // IMPORTANT: Supabase uses the Site URL from Dashboard > Authentication > URL Configuration
+    // Make sure to set it to your production URL there!
+    // 
+    // Also set VITE_SITE_URL environment variable in production to ensure correct redirects
     // Use environment variable for production URL, fallback to current origin
-    const redirectUrl = import.meta.env.VITE_SITE_URL 
+    // In production, always prefer VITE_SITE_URL to avoid localhost issues
+    const isProduction = import.meta.env.PROD || (!import.meta.env.DEV && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
+    const redirectUrl = import.meta.env.VITE_SITE_URL
       ? `${import.meta.env.VITE_SITE_URL}/auth/confirm`
-      : `${window.location.origin}/auth/confirm`;
+      : isProduction && window.location.origin.includes('localhost')
+        ? (() => {
+            console.error('⚠️ WARNING: VITE_SITE_URL not set in production! Email confirmation links may not work correctly.');
+            console.error('Please set VITE_SITE_URL environment variable to your production URL.');
+            return `${window.location.origin}/auth/confirm`;
+          })()
+        : `${window.location.origin}/auth/confirm`;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Signup redirect URL:', redirectUrl);
+    }
     
     const { data, error } = await supabase.auth.signUp({
       email: sanitizedEmail,
@@ -333,10 +345,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resendConfirmationEmail = async (email: string) => {
     try {
       // Use environment variable for production URL, fallback to current origin
-      const redirectUrl = import.meta.env.VITE_SITE_URL 
+      const redirectUrl = import.meta.env.VITE_SITE_URL
         ? `${import.meta.env.VITE_SITE_URL}/auth/confirm`
         : `${window.location.origin}/auth/confirm`;
-        
+
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email.trim().toLowerCase(),

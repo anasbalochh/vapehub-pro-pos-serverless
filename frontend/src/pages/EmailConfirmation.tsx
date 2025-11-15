@@ -17,8 +17,27 @@ const EmailConfirmation = () => {
     const verifyEmail = async () => {
       try {
         // Supabase handles email confirmation via URL hash fragments (#access_token=...)
-        // We need to check the hash and let Supabase process it
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        // The hash contains the confirmation token that Supabase needs to process
+        // Check if we have a hash in the URL
+        const hash = window.location.hash;
+        
+        if (!hash || hash.length === 0) {
+          // No hash found - might be a direct visit or the hash was already processed
+          // Check if we already have a confirmed session
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user?.email_confirmed_at) {
+            setStatus('success');
+            setMessage('Your account is confirmed! You can now login.');
+            return;
+          } else {
+            setStatus('error');
+            setMessage('No confirmation token found. Please check your email and use the confirmation link.');
+            return;
+          }
+        }
+        
+        // Parse hash parameters
+        const hashParams = new URLSearchParams(hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const type = hashParams.get('type');
 
@@ -33,14 +52,14 @@ const EmailConfirmation = () => {
         if (accessToken) {
           // Let Supabase process the hash and exchange it for a session
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-          
+
           if (sessionError) {
             console.error('Session error:', sessionError);
           }
 
           // Also try to get the user from the URL hash
           const { data: hashData, error: hashError } = await supabase.auth.getUser();
-          
+
           if (hashError) {
             console.error('Hash processing error:', hashError);
           }
