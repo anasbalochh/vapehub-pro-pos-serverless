@@ -38,6 +38,11 @@ export default defineConfig(({ mode }) => {
     },
     // Enable HTTP/2 for faster loading
     http2: true,
+    // SPA fallback - serve index.html for all routes (fixes 404 on refresh)
+    // This ensures client-side routing works when refreshing pages
+    fs: {
+      strict: false,
+    },
     // Optimize pre-bundling
     optimizeDeps: {
       include: [
@@ -49,6 +54,11 @@ export default defineConfig(({ mode }) => {
       ],
       exclude: ['@vite/client', '@vite/env'],
     },
+  },
+  // Preview server configuration (for testing production build locally)
+  preview: {
+    port: 8080,
+    host: "::",
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
