@@ -218,21 +218,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       console.log('AuthContext: Starting login for', sanitizedEmail);
-      
+
       // Log Supabase configuration status
       const supabaseUrl = (supabase as any).supabaseUrl || 'Unknown';
       console.log('AuthContext: Supabase URL configured:', supabaseUrl ? 'Yes' : 'No');
-      
+
       // Use Supabase Auth directly without connection test
       // The connection test was causing issues, so we'll let the auth call handle it
       console.log('AuthContext: Calling Supabase signInWithPassword...');
       const startTime = Date.now();
-      
+
       // Use a longer timeout (45 seconds) to allow for slow connections
       // Also add AbortController for better timeout handling
       const controller = new AbortController();
       let timeoutId: NodeJS.Timeout;
-      
+
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
           controller.abort();
@@ -275,6 +275,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw raceError;
         }
         
+        // Check for 404 errors (wrong Supabase URL)
+        if (raceError?.status === 404 || 
+            raceError?.statusCode === 404 ||
+            raceError?.message?.includes('404') ||
+            raceError?.message?.includes('Not Found')) {
+          console.error('AuthContext: 404 error - Supabase URL may be incorrect');
+          throw new Error('Supabase endpoint not found (404). Please check your VITE_SUPABASE_URL in the .env file. The URL should be: https://your-project-id.supabase.co');
+        }
+        
         // Check for network errors
         if (raceError?.message?.includes('Failed to fetch') || 
             raceError?.message?.includes('NetworkError') ||
@@ -292,22 +301,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('AuthContext: Supabase login error:', error);
+        console.error('AuthContext: Error status:', error.status);
+        console.error('AuthContext: Error message:', error.message);
+        
+        // Handle 404 errors (wrong Supabase URL)
+        if (error.status === 404 || error.statusCode === 404 || error.message?.includes('404')) {
+          throw new Error('Supabase endpoint not found (404). Please verify your VITE_SUPABASE_URL in the .env file. It should be: https://your-project-id.supabase.co');
+        }
+        
         // Handle network/timeout errors
         if (error.message?.includes('timeout') || error.message?.includes('Failed to fetch') || error.message?.includes('network') || error.message?.includes('NetworkError')) {
           throw new Error('Connection timeout. Please check your internet connection and try again.');
         }
+        
         // Handle email confirmation error
         if (error.message?.includes('Email not confirmed') || error.message?.includes('unconfirmed')) {
           throw new Error('Please check your email and click the confirmation link before logging in.');
         }
+        
         // Handle invalid credentials
         if (error.message?.includes('Invalid login credentials') || error.message?.includes('invalid_credentials')) {
           throw new Error('Invalid email or password.');
         }
+        
         // Handle rate limiting
         if (error.message?.includes('rate limit') || error.status === 429) {
           throw new Error('Too many login attempts. Please wait a moment and try again.');
         }
+        
         throw new Error(error.message || 'Login failed. Please try again.');
       }
 

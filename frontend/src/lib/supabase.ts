@@ -63,11 +63,32 @@ Current values:
 
     // Validate URL format
     if (!supabaseUrl.includes('supabase.co') && !supabaseUrl.includes('supabase.in')) {
-        console.warn('Warning: Supabase URL does not match expected format. Should contain "supabase.co" or "supabase.in"');
+        console.error('❌ ERROR: Supabase URL does not match expected format!');
+        console.error('   Expected format: https://your-project-id.supabase.co');
+        console.error('   Your URL:', supabaseUrl);
+        console.error('   The URL should contain "supabase.co" or "supabase.in"');
     }
 
     if (!supabaseUrl.startsWith('https://')) {
-        console.warn('Warning: Supabase URL should start with https://');
+        console.error('❌ ERROR: Supabase URL must start with https://');
+        console.error('   Your URL:', supabaseUrl);
+    }
+    
+    // Check for common URL mistakes
+    if (supabaseUrl.includes('localhost') || supabaseUrl.includes('127.0.0.1')) {
+        console.error('❌ ERROR: Supabase URL should not be localhost!');
+        console.error('   Use your actual Supabase project URL from the dashboard');
+    }
+    
+    // Validate URL structure
+    try {
+        const url = new URL(supabaseUrl);
+        if (url.pathname !== '/' && url.pathname !== '') {
+            console.warn('⚠️ Warning: Supabase URL should not have a path. It should end with .supabase.co');
+        }
+    } catch (e) {
+        console.error('❌ ERROR: Invalid URL format!');
+        console.error('   Your URL:', supabaseUrl);
     }
 
     // Validate key format
@@ -94,7 +115,7 @@ if (config) {
         console.log('🔗 Supabase URL:', config.url);
         console.log('🔑 Supabase Key:', config.key ? `${config.key.substring(0, 20)}...` : 'MISSING');
     }
-    
+
     // Valid configuration - create normal client with timeout settings
     supabaseClient = createClient(config.url, config.key, {
         auth: {
