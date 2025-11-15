@@ -413,27 +413,83 @@ const Returns = () => {
                               ) : '-'}
                             </TableCell>
                           )}
-                          {visibleFields.map(field => (
-                            <TableCell key={field.fieldKey}>
-                              {field.fieldKey === 'salePrice' ? (
-                                <span className="font-bold text-destructive">
-                                  -{formatCurrency(Number(product.customData?.[field.fieldKey] || product.salePrice) || 0)}
-                                </span>
-                              ) : field.fieldKey === 'retailPrice' ? (
-                                product.customData?.[field.fieldKey] || product.retailPrice ? (
-                                  <span className="text-xs text-muted-foreground line-through">
-                                    -{formatCurrency(Number(product.customData?.[field.fieldKey] || product.retailPrice))}
-                                  </span>
-                                ) : '-'
-                              ) : product.customData?.[field.fieldKey] ? (
-                                field.fieldType === 'boolean'
-                                  ? (product.customData[field.fieldKey] ? 'Yes' : 'No')
-                                  : Array.isArray(product.customData[field.fieldKey])
-                                    ? product.customData[field.fieldKey].join(', ')
-                                    : product.customData[field.fieldKey]
-                              ) : '-'}
-                            </TableCell>
-                          ))}
+                          {visibleFields.map(field => {
+                            // Get value from customData or direct product property
+                            const getFieldValue = () => {
+                              if (product.customData?.[field.fieldKey] !== undefined) {
+                                return product.customData[field.fieldKey];
+                              }
+                              // Check direct product properties
+                              return product[field.fieldKey as keyof Product];
+                            };
+                            
+                            const value = getFieldValue();
+
+                            return (
+                              <TableCell key={field.fieldKey}>
+                                {(() => {
+                                  // Handle salePrice and retailPrice specially
+                                  if (field.fieldKey === 'salePrice') {
+                                    const price = Number(value || product.salePrice) || 0;
+                                    return <span className="font-bold text-destructive">-{formatCurrency(price)}</span>;
+                                  }
+                                  if (field.fieldKey === 'retailPrice') {
+                                    const price = Number(value || product.retailPrice);
+                                    return price ? (
+                                      <span className="text-xs text-muted-foreground line-through">-{formatCurrency(price)}</span>
+                                    ) : '-';
+                                  }
+                                  if (field.fieldKey === 'stock') {
+                                    const stockValue = Number(value || product.stock) || 0;
+                                    return (
+                                      <span className={`font-medium ${stockValue > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {stockValue} {stockValue === 0 ? '(Out)' : ''}
+                                      </span>
+                                    );
+                                  }
+                                  if (field.fieldKey === 'category') {
+                                    return value ? (
+                                      <Badge variant="outline" className="text-xs">{String(value)}</Badge>
+                                    ) : '-';
+                                  }
+                                  if (field.fieldKey === 'brand') {
+                                    return value ? (
+                                      <Badge variant="secondary" className="text-xs">{String(value)}</Badge>
+                                    ) : '-';
+                                  }
+                                  // Handle other field types
+                                  if (field.fieldType === 'boolean') {
+                                    return value ? 'Yes' : 'No';
+                                  } else if (Array.isArray(value)) {
+                                    return value.join(', ');
+                                  } else if (field.fieldType === 'date' && value) {
+                                    // Format date fields properly
+                                    try {
+                                      let date;
+                                      if (typeof value === 'string' && value.includes('/')) {
+                                        const [month, day, year] = value.split('/');
+                                        date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                      } else {
+                                        date = new Date(value);
+                                      }
+                                      if (!isNaN(date.getTime())) {
+                                        return date.toLocaleDateString('en-US', {
+                                          year: 'numeric',
+                                          month: '2-digit',
+                                          day: '2-digit'
+                                        });
+                                      }
+                                    } catch (e) {
+                                      // If date parsing fails, return original value
+                                    }
+                                    return String(value);
+                                  } else {
+                                    return value !== null && value !== undefined && value !== '' ? String(value) : '-';
+                                  }
+                                })()}
+                              </TableCell>
+                            );
+                          })}
                           <TableCell>
                             <span className={`font-medium ${product.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
                               {product.stock} {product.stock === 0 ? '(Out)' : ''}
