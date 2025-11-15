@@ -45,8 +45,8 @@ const Reports = () => {
 
   const { data: transactionsData } = useQuery({
     queryKey: ['transactions', 'reports', range],
-    queryFn: () => reportsApi.transactions({ 
-      ...(range.start || range.end ? { start: range.start, end: range.end } : {}) 
+    queryFn: () => reportsApi.transactions({
+      ...(range.start || range.end ? { start: range.start, end: range.end } : {})
     }),
     enabled: !!user?.id,
     staleTime: 1000 * 30, // 30 seconds
@@ -89,9 +89,20 @@ const Reports = () => {
     }
   };
 
-  const totalSales = summary?.totalSales ?? 0;
-  const totalRefunds = summary?.totalRefunds ?? 0;
-  const netRevenue = summary?.netRevenue ?? 0;
+  // Calculate metrics from filtered transactions if date range is active, otherwise use summary
+  const hasDateRange = !!(range.start || range.end);
+  const sales = rows.filter((r) => r.type === 'Sale');
+  const refunds = rows.filter((r) => r.type === 'Refund');
+
+  const totalSales = hasDateRange
+    ? sales.reduce((sum, order) => sum + (order.total || 0), 0)
+    : (summary?.totalSales ?? 0);
+
+  const totalRefunds = hasDateRange
+    ? refunds.reduce((sum, order) => sum + Math.abs(order.total || 0), 0)
+    : (summary?.totalRefunds ?? 0);
+
+  const netRevenue = totalSales - totalRefunds;
 
   const tableRows = useMemo(() => rows.map((r) => {
     const dateObj = new Date(r.createdAt || r.created_at || new Date());

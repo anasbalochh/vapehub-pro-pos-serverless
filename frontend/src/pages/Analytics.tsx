@@ -22,9 +22,9 @@ const Analytics = () => {
 
   const { data: transactionsData } = useQuery({
     queryKey: ['transactions', 'analytics', range],
-    queryFn: () => reportsApi.transactions({ 
-      limit: 200, 
-      ...(range.start || range.end ? { start: range.start, end: range.end } : {}) 
+    queryFn: () => reportsApi.transactions({
+      limit: 200,
+      ...(range.start || range.end ? { start: range.start, end: range.end } : {})
     }),
     enabled: !!user?.id,
     staleTime: 1000 * 30, // 30 seconds
@@ -64,6 +64,7 @@ const Analytics = () => {
   const sales = transactions.filter((t: any) => t.type === 'Sale');
   const refunds = transactions.filter((t: any) => t.type === 'Refund');
 
+  // When date range is active, calculate from filtered transactions; otherwise use summary API data
   const totalSales = hasDateRange
     ? sales.reduce((sum: number, t: any) => sum + (t.total || 0), 0)
     : (summaryData?.totalSales ?? 0);
