@@ -230,11 +230,12 @@ const Settings = () => {
               {/* Logo Preview */}
               {logoPreview ? (
                 <div className="relative inline-block">
-                  <div className="w-32 h-32 border-2 border-dashed border-border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                  <div className="w-32 h-32 border-2 border-dashed border-border rounded-lg overflow-hidden bg-muted flex items-center justify-center p-2">
                     <img
                       src={logoPreview}
                       alt="Business Logo"
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain max-w-full max-h-full"
+                      style={{ objectFit: 'contain' }}
                     />
                   </div>
                   <Button

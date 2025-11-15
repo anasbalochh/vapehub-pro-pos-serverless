@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import VapeHubLogo from './VapeHubLogo';
 
@@ -17,6 +17,7 @@ const BusinessLogo: React.FC<BusinessLogoProps> = ({
 }) => {
   const { user } = useAuth();
   const logoUrl = user?.logoUrl;
+  const [imageError, setImageError] = useState(false);
 
   const sizeClasses = {
     sm: 'w-6 h-6',
@@ -24,32 +25,27 @@ const BusinessLogo: React.FC<BusinessLogoProps> = ({
     lg: 'w-12 h-12'
   };
 
+  // If image failed to load or no logo URL, show fallback
+  if (!logoUrl || imageError) {
+    if (showFallback) {
+      return <VapeHubLogo className={className} size={size} variant={variant} />;
+    }
+    return null;
+  }
+
   // If user has a logo, show it
-  if (logoUrl) {
-    return (
+  return (
+    <div className={`${sizeClasses[size]} ${className} flex items-center justify-center overflow-hidden`}>
       <img
         src={logoUrl}
         alt={user?.businessName || 'Business Logo'}
-        className={`${sizeClasses[size]} ${className} object-contain`}
-        onError={(e) => {
-          // If image fails to load, show fallback
-          if (showFallback) {
-            const target = e.target as HTMLImageElement;
-            target.style.display = 'none';
-            const fallback = target.nextElementSibling as HTMLElement;
-            if (fallback) fallback.style.display = 'block';
-          }
-        }}
+        className="w-full h-full object-contain max-w-full max-h-full"
+        style={{ objectFit: 'contain' }}
+        onError={() => setImageError(true)}
+        onLoad={() => setImageError(false)}
       />
-    );
-  }
-
-  // Fallback to default logo
-  if (showFallback) {
-    return <VapeHubLogo className={className} size={size} variant={variant} />;
-  }
-
-  return null;
+    </div>
+  );
 };
 
 export default BusinessLogo;
