@@ -422,7 +422,7 @@ const Returns = () => {
                               // Check direct product properties
                               return product[field.fieldKey as keyof Product];
                             };
-                            
+
                             const value = getFieldValue();
 
                             return (

@@ -545,111 +545,192 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
 
       {/* Add Custom Field Modal */}
       {showAddField && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Add Custom Field</CardTitle>
-            <CardDescription>Create a new custom field for your products</CardDescription>
+        <Card className="border-2 border-primary/20">
+          <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-primary" />
+                  Add Custom Field
+                </CardTitle>
+                <CardDescription className="mt-1">Create a new custom field for your products</CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowAddField(false)}
+                className="h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <CardContent className="space-y-6 pt-6">
+            {/* Main Field Data Section - Top */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b">
+                <Settings className="h-4 w-4 text-primary" />
+                <h3 className="font-semibold text-sm">Field Information</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fieldLabel" className="text-sm font-medium">
+                    Display Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="fieldLabel"
+                    value={newField.fieldLabel || ''}
+                    onChange={(e) => {
+                      const label = e.target.value;
+                      setNewField(prev => {
+                        // Auto-generate field key from label if field key is empty or matches previous label
+                        const shouldAutoGenerate = !prev.fieldKey ||
+                          prev.fieldKey === generateFieldKeyFromLabel(prev.fieldLabel || '');
+                        return {
+                          ...prev,
+                          fieldLabel: label,
+                          fieldKey: shouldAutoGenerate ? generateFieldKeyFromLabel(label) : prev.fieldKey
+                        };
+                      });
+                    }}
+                    placeholder="e.g., Warranty Period"
+                    className="bg-background"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This is the name users will see when filling out the form
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="fieldKey" className="text-sm font-medium">
+                    Field Name (Internal) <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="fieldKey"
+                    value={newField.fieldKey || ''}
+                    onChange={(e) => {
+                      const sanitized = sanitizeFieldKey(e.target.value);
+                      setNewField(prev => ({ ...prev, fieldKey: sanitized }));
+                    }}
+                    placeholder="e.g., warranty_period"
+                    className="bg-background font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Only letters, numbers, and underscores allowed
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fieldType" className="text-sm font-medium">
+                    Input Type <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={newField.fieldType}
+                    onValueChange={(value) => setNewField(prev => ({ ...prev, fieldType: value as any }))}
+                  >
+                    <SelectTrigger id="fieldType" className="bg-background">
+                      <SelectValue placeholder="Select input type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="text">Text Input</SelectItem>
+                      <SelectItem value="number">Number Input</SelectItem>
+                      <SelectItem value="select">Dropdown Menu</SelectItem>
+                      <SelectItem value="multiselect">Multiple Choice</SelectItem>
+                      <SelectItem value="date">Date Picker</SelectItem>
+                      <SelectItem value="boolean">Yes/No Toggle</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Choose how users will input data for this field
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="placeholderText" className="text-sm font-medium">
+                    Hint Text
+                  </Label>
+                  <Input
+                    id="placeholderText"
+                    value={newField.placeholderText || ''}
+                    onChange={(e) => setNewField(prev => ({ ...prev, placeholderText: e.target.value }))}
+                    placeholder="e.g., Enter warranty period in months"
+                    className="bg-background"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Helpful text shown inside the input field
+                  </p>
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label>Field Name (Internal)</Label>
+                <Label htmlFor="helpText" className="text-sm font-medium">
+                  Description
+                </Label>
                 <Input
-                  value={newField.fieldKey || ''}
-                  onChange={(e) => {
-                    const sanitized = sanitizeFieldKey(e.target.value);
-                    setNewField(prev => ({ ...prev, fieldKey: sanitized }));
-                  }}
-                  placeholder="e.g., warranty_period, expiry_date"
+                  id="helpText"
+                  value={newField.helpText || ''}
+                  onChange={(e) => setNewField(prev => ({ ...prev, helpText: e.target.value }))}
+                  placeholder="e.g., This field helps track product warranty information"
+                  className="bg-background"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Only letters, numbers, and underscores allowed
+                  Additional information about this field (optional)
                 </p>
               </div>
-              <div className="space-y-2">
-                <Label>Display Name</Label>
-                <Input
-                  value={newField.fieldLabel || ''}
-                  onChange={(e) => {
-                    const label = e.target.value;
-                    setNewField(prev => {
-                      // Auto-generate field key from label if field key is empty or matches previous label
-                      const shouldAutoGenerate = !prev.fieldKey ||
-                        prev.fieldKey === generateFieldKeyFromLabel(prev.fieldLabel || '');
-                      return {
-                        ...prev,
-                        fieldLabel: label,
-                        fieldKey: shouldAutoGenerate ? generateFieldKeyFromLabel(label) : prev.fieldKey
-                      };
-                    });
-                  }}
-                  placeholder="e.g., Warranty Period"
-                />
+            </div>
+
+            {/* Field Options Section - Bottom */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center gap-2 pb-2">
+                <Settings className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-semibold text-sm text-muted-foreground">Field Options</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-background rounded-md border">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="isRequired" className="text-sm font-medium cursor-pointer">
+                      Required Field
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Users must fill this field
+                    </p>
+                  </div>
+                  <Switch
+                    id="isRequired"
+                    checked={newField.isRequired || false}
+                    onCheckedChange={(checked) => setNewField(prev => ({ ...prev, isRequired: checked }))}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-background rounded-md border">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="isActive" className="text-sm font-medium cursor-pointer">
+                      Show Field
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Display this field in forms
+                    </p>
+                  </div>
+                  <Switch
+                    id="isActive"
+                    checked={newField.isActive !== false}
+                    onCheckedChange={(checked) => setNewField(prev => ({ ...prev, isActive: checked }))}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Input Type</Label>
-                <Select
-                  value={newField.fieldType}
-                  onValueChange={(value) => setNewField(prev => ({ ...prev, fieldType: value as any }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Text Input</SelectItem>
-                    <SelectItem value="number">Number Input</SelectItem>
-                    <SelectItem value="select">Dropdown Menu</SelectItem>
-                    <SelectItem value="multiselect">Multiple Choice</SelectItem>
-                    <SelectItem value="date">Date Picker</SelectItem>
-                    <SelectItem value="boolean">Yes/No Toggle</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Hint Text</Label>
-                <Input
-                  value={newField.placeholderText || ''}
-                  onChange={(e) => setNewField(prev => ({ ...prev, placeholderText: e.target.value }))}
-                  placeholder="e.g., Enter warranty period in months"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Input
-                value={newField.helpText || ''}
-                onChange={(e) => setNewField(prev => ({ ...prev, helpText: e.target.value }))}
-                placeholder="e.g., This field helps track product warranty information"
-              />
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={newField.isRequired || false}
-                  onCheckedChange={(checked) => setNewField(prev => ({ ...prev, isRequired: checked }))}
-                />
-                <Label>Make this field required</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={newField.isActive || false}
-                  onCheckedChange={(checked) => setNewField(prev => ({ ...prev, isActive: checked }))}
-                />
-                <Label>Show this field</Label>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Button onClick={addCustomField}>
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-4 border-t">
+              <Button onClick={addCustomField} className="flex-1">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Field
               </Button>
-              <Button variant="outline" onClick={() => setShowAddField(false)}>
+              <Button variant="outline" onClick={() => setShowAddField(false)} className="flex-1">
                 Cancel
               </Button>
             </div>
