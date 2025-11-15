@@ -126,50 +126,17 @@ const Returns = () => {
 
   const filteredProducts = products; // No need for client-side filtering since we do server-side filtering
 
-  // Get dynamic visible fields - show all active fields that have data (same logic as Stock and Products pages)
+  // Get visible fields for table display - exclude core fields that are already shown as hardcoded columns
   const visibleFields = useMemo(() => {
-    if (products.length === 0) {
-      // If no products, show all active fields (so user can see what fields are available)
-      return fields
-        .filter(field => field.isActive)
-        .sort((a, b) => a.displayOrder - b.displayOrder);
-    }
+    // Core fields that are already shown as separate columns (SKU, Name, Brand, Category, Stock)
+    // These should be excluded from visibleFields to avoid duplication
+    const coreFieldKeys = ['sku', 'name', 'brand', 'category', 'stock'];
 
-    // Get all field keys that have data in at least one product
-    const fieldsWithData = new Set<string>();
-
-    products.forEach(product => {
-      // Check direct product properties
-      ['sku', 'name', 'brand', 'category', 'salePrice', 'retailPrice', 'stock'].forEach(key => {
-        if (product[key] !== null && product[key] !== undefined && product[key] !== '') {
-          fieldsWithData.add(key);
-        }
-      });
-
-      // Check customData
-      if (product.customData) {
-        Object.keys(product.customData).forEach(key => {
-          const value = product.customData[key];
-          if (value !== null && value !== undefined && value !== '' &&
-              !(Array.isArray(value) && value.length === 0)) {
-            fieldsWithData.add(key);
-          }
-        });
-      }
-    });
-
-    // Return fields that are active and have data (or are core fields)
-    const coreFields = ['sku', 'name', 'brand', 'category', 'salePrice', 'retailPrice', 'stock'];
+    // Return all active fields except core fields that are already displayed
     return fields
-      .filter(field => {
-        if (!field.isActive) return false;
-        // Always show core fields
-        if (coreFields.includes(field.fieldKey)) return true;
-        // Show custom fields if they have data
-        return fieldsWithData.has(field.fieldKey);
-      })
+      .filter(field => field.isActive && !coreFieldKeys.includes(field.fieldKey))
       .sort((a, b) => a.displayOrder - b.displayOrder);
-  }, [fields, products]);
+  }, [fields]);
 
   // Check if we should show brand column
   const showBrandColumn = useMemo(() => {

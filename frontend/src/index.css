@@ -513,4 +513,24 @@
       @apply text-black bg-white;
     }
   }
+
+  /* Fix Select dropdown - no animations, instant appearance */
+  [data-radix-select-content] {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+    will-change: auto !important;
+  }
+
+  [data-radix-select-content][data-state="open"] {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  [data-radix-select-content][data-state="closed"] {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
 }

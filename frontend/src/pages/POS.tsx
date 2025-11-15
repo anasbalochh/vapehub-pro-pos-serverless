@@ -73,15 +73,15 @@ const POS = () => {
       const posProducts = productsResponse.data.map((p: DynamicProduct) => {
         // Extract prices from both main fields and customData
         // Check if salePrice exists (not null/undefined), otherwise check customData
-        const salePrice = (p.salePrice != null && p.salePrice !== '') 
-          ? p.salePrice 
-          : (p.customData?.salePrice != null && p.customData?.salePrice !== '') 
-            ? p.customData.salePrice 
+        const salePrice = (p.salePrice != null && p.salePrice !== '')
+          ? p.salePrice
+          : (p.customData?.salePrice != null && p.customData?.salePrice !== '')
+            ? p.customData.salePrice
             : 0;
-        const retailPrice = (p.retailPrice != null && p.retailPrice !== '') 
-          ? p.retailPrice 
-          : (p.customData?.retailPrice != null && p.customData?.retailPrice !== '') 
-            ? p.customData.retailPrice 
+        const retailPrice = (p.retailPrice != null && p.retailPrice !== '')
+          ? p.retailPrice
+          : (p.customData?.retailPrice != null && p.customData?.retailPrice !== '')
+            ? p.customData.retailPrice
             : undefined;
 
         const finalSalePrice = Number(salePrice) || 0;
@@ -138,30 +138,17 @@ const POS = () => {
 
   const filteredProducts = products; // No need for client-side filtering since we do server-side filtering
 
-  // Get dynamic visible fields - only show fields that have data in products
+  // Get visible fields for table display - exclude core fields that are already shown as hardcoded columns
   const visibleFields = useMemo(() => {
-    if (products.length === 0) return [];
+    // Core fields that are already shown as separate columns (SKU, Name, Brand, Category, Stock)
+    // These should be excluded from visibleFields to avoid duplication
+    const coreFieldKeys = ['sku', 'name', 'brand', 'category', 'stock'];
 
-    // Get all field keys that have data in at least one product
-    const fieldsWithData = new Set<string>();
-
-    products.forEach(product => {
-      if (product.customData) {
-        Object.keys(product.customData).forEach(key => {
-          const value = product.customData[key];
-          if (value !== null && value !== undefined && value !== '' &&
-              !(Array.isArray(value) && value.length === 0)) {
-            fieldsWithData.add(key);
-          }
-        });
-      }
-    });
-
-    // Return fields that are active and have data
+    // Return all active fields except core fields that are already displayed
     return fields
-      .filter(field => field.isActive && fieldsWithData.has(field.fieldKey))
+      .filter(field => field.isActive && !coreFieldKeys.includes(field.fieldKey))
       .sort((a, b) => a.displayOrder - b.displayOrder);
-  }, [fields, products]);
+  }, [fields]);
 
   // Check if we should show brand column
   const showBrandColumn = useMemo(() => {

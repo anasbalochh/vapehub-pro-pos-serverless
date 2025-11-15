@@ -413,7 +413,7 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
 
       {/* Add Custom Field Form - Show at TOP when active */}
       {showAddField && (
-        <Card className="border-2 border-primary/20">
+        <Card className="border-2 border-primary/20 overflow-visible">
           <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
             <div className="flex items-center justify-between">
               <div>
@@ -433,7 +433,7 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6 pt-6">
+          <CardContent className="space-y-6 pt-6 overflow-visible">
             {/* Main Field Data Section - Top */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b">
@@ -491,7 +491,7 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2 relative z-0">
                   <Label htmlFor="fieldType" className="text-sm font-medium">
                     Input Type <span className="text-destructive">*</span>
                   </Label>
@@ -502,7 +502,14 @@ export const FieldSettings: React.FC<FieldSettingsProps> = ({
                     <SelectTrigger id="fieldType" className="bg-background">
                       <SelectValue placeholder="Select input type" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent
+                      side="bottom"
+                      sideOffset={8}
+                      align="start"
+                      position="item-aligned"
+                      className="z-[9999] shadow-xl border-2 !transition-none !duration-0"
+                      style={{ transition: 'none', animation: 'none' }}
+                    >
                       <SelectItem value="text">Text Input</SelectItem>
                       <SelectItem value="number">Number Input</SelectItem>
                       <SelectItem value="select">Dropdown Menu</SelectItem>
