@@ -141,7 +141,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4 w-full">
+      <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4 w-full min-w-0">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, index) => (
             <MetricCardSkeleton key={index} />
@@ -150,15 +150,17 @@ const Dashboard = () => {
           stats.map((stat, index) => {
             const Icon = stat.icon;
             return (
-              <Card key={stat.title} className="metric-card animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-6">
-                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
+              <Card key={stat.title} className="metric-card animate-slide-up overflow-hidden max-w-full" style={{ animationDelay: `${index * 0.1}s` }}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-6 min-w-0">
+                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground truncate pr-2 min-w-0">
                     {stat.title}
                   </CardTitle>
-                  <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", stat.color)} />
+                  <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0", stat.color)} />
                 </CardHeader>
-                <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
-                  <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-foreground break-words overflow-hidden">{stat.value}</div>
+                <CardContent className="p-3 sm:p-4 md:p-6 pt-0 overflow-hidden min-w-0">
+                  <div className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-foreground break-words min-w-0 leading-tight" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                    {stat.value}
+                  </div>
                   {stat.change && (
                     <p className={cn("text-xs mt-1 flex items-center", stat.color)}>
                       <TrendingUp className="w-3 h-3 mr-1" />
