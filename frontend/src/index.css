@@ -507,9 +507,22 @@
     }
 
     /* Better card padding on mobile */
-    .card-professional {
+    .card-professional,
+    .metric-card {
       padding: 0.75rem;
       max-width: 100%;
+      overflow: hidden;
+    }
+
+    /* Ensure metric cards don't overflow on mobile */
+    .metric-card {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .metric-card .card-content,
+    .metric-card [class*="CardContent"] {
+      min-width: 0;
       overflow: hidden;
     }
 
