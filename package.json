@@ -1,0 +1,32 @@
+{
+  "name": "vapehub-pro-pos-serverless",
+  "version": "1.0.0",
+  "description": "A modern, serverless Point of Sale (POS) system built with React, TypeScript, and Supabase",
+  "main": "index.js",
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview",
+    "install-deps": "cd frontend && npm install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anasbalochh/vapehub-pro-pos-serverless.git"
+  },
+  "keywords": [
+    "pos",
+    "point-of-sale",
+    "react",
+    "typescript",
+    "supabase",
+    "serverless",
+    "vape",
+    "retail"
+  ],
+  "author": "Anas Baloch",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/anasbalochh/vapehub-pro-pos-serverless/issues"
+  },
+  "homepage": "https://github.com/anasbalochh/vapehub-pro-pos-serverless#readme"
+}
